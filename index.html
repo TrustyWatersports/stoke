@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stoke — Turn your work into growth</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/stoke.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- ── HEADER ─────────────────────────────────────────── -->
+  <div class="header">
+    <div class="logo" aria-hidden="true">
+      <svg viewBox="0 0 20 20" fill="none" width="22" height="22">
+        <path d="M10 2C10 2 4 8 4 12a6 6 0 0012 0c0-4-6-10-6-10z" fill="white" opacity=".95"/>
+        <path d="M10 8c0 0-2 3-2 5a2 2 0 004 0c0-2-2-5-2-5z" fill="white" opacity=".45"/>
+      </svg>
+    </div>
+    <span class="wordmark">Stoke</span>
+    <span class="version-badge">v8</span>
+    <span class="tagline">Turn your work into growth</span>
+  </div>
+
+  <!-- ── FORM ───────────────────────────────────────────── -->
+  <div id="form-section">
+
+    <!-- PHOTOS -->
+    <div class="field-group">
+      <span class="section-label">Photos</span>
+      <label class="field-label" for="photo-input">Add job photos</label>
+      <span class="field-hint">AI analyzes your images and weaves what it sees into every post. Upload up to 6.</span>
+      <div class="photo-zone" id="photo-zone">
+        <input type="file" id="photo-input" accept="image/jpeg,image/jpg,image/png,image/heic,image/heif,image/*"
+               multiple onchange="handlePhotoSelect(event)" aria-label="Upload job photos">
+        <svg style="width:40px;height:40px;color:var(--text-3);margin:0 auto 10px;display:block" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+          <rect x="3" y="10" width="34" height="24" rx="4" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="20" cy="22" r="6" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M14 10l2.5-5h7l2.5 5" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+        <p style="font-size:14px;font-weight:500;color:var(--text-2)">Click to upload or drag photos here</p>
+        <p style="font-size:12px;color:var(--text-3);margin-top:4px">JPG, PNG, HEIC — up to 6 photos</p>
+      </div>
+      <div class="photo-previews" id="photo-previews" role="list" aria-label="Uploaded photos"></div>
+      <div id="photo-count"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- JOB TYPE -->
+    <div class="field-group">
+      <span class="section-label">Job details</span>
+      <label class="field-label">
+        Job type
+        <span class="field-label-sub">(select all that apply)</span>
+        <span class="selection-count" id="job-type-count"></span>
+      </label>
+      <div class="toggle-grid toggle-grid-3" role="group" aria-label="Job type">
+        <button class="toggle-btn" data-val="Custom Rigging Build"   onclick="toggleJobType(this)">Custom Rigging</button>
+        <button class="toggle-btn" data-val="Kayak Sale"             onclick="toggleJobType(this)">Kayak Sale</button>
+        <button class="toggle-btn" data-val="Demo Day Event"         onclick="toggleJobType(this)">Demo Day</button>
+        <button class="toggle-btn" data-val="Rental or Tour"         onclick="toggleJobType(this)">Rental / Tour</button>
+        <button class="toggle-btn" data-val="Sailboat Sale or Lesson" onclick="toggleJobType(this)">Sailing</button>
+        <button class="toggle-btn" data-val="Repair or Service"      onclick="toggleJobType(this)">Repair / Service</button>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label" for="customer-moment">Customer moment</label>
+      <span class="field-hint">Who was the customer, what brought them in, anything memorable</span>
+      <textarea id="customer-moment" rows="3"
+        placeholder="e.g. Brett drove 2.5 hours, tried three boats back to back..."></textarea>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label" for="products-used">Key products or components</label>
+      <input type="text" id="products-used"
+        placeholder="e.g. Native Slayer LTE, Topaz Argo, YakAttack GearTrac...">
+    </div>
+
+    <div class="field-group">
+      <label class="field-label" for="problem-solved">What problem did this solve?</label>
+      <input type="text" id="problem-solved"
+        placeholder="e.g. Try before you buy, tournament-ready setup...">
+    </div>
+
+    <div class="field-group">
+      <label class="field-label" for="extra-details">Anything else worth capturing?</label>
+      <textarea id="extra-details" rows="2"
+        placeholder="Weather, results, reactions, quotes, before/after..."></textarea>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- OUTPUT CHANNELS -->
+    <div class="field-group">
+      <label class="field-label">
+        Output channels
+        <span class="field-label-sub">(select all you want)</span>
+        <span class="selection-count" id="channel-count">4 selected</span>
+      </label>
+      <span class="field-hint">Choose which platforms to generate content for</span>
+      <div class="toggle-grid toggle-grid-4" role="group" aria-label="Output channels">
+        <button class="toggle-btn selected" data-channel="INSTAGRAM" onclick="toggleChannel(this)">
+          Instagram<small>Caption + hashtags</small>
+        </button>
+        <button class="toggle-btn selected" data-channel="FACEBOOK" onclick="toggleChannel(this)">
+          Facebook<small>Long-form post</small>
+        </button>
+        <button class="toggle-btn" data-channel="TIKTOK" onclick="toggleChannel(this)">
+          TikTok / Reels<small>Video script</small>
+        </button>
+        <button class="toggle-btn selected" data-channel="GOOGLE" onclick="toggleChannel(this)">
+          Google Business<small>Business update</small>
+        </button>
+        <button class="toggle-btn selected" data-channel="EMAIL" onclick="toggleChannel(this)">
+          Customer Email<small>Follow-up email</small>
+        </button>
+        <button class="toggle-btn" data-channel="YOUTUBE" onclick="toggleChannel(this)">
+          YouTube Shorts<small>Video script</small>
+        </button>
+      </div>
+    </div>
+
+    <!-- WRITING STYLE -->
+    <div class="field-group">
+      <label class="field-label">Writing style</label>
+      <div class="toggle-grid toggle-grid-2" role="group" aria-label="Writing style">
+        <button id="tone-general" class="toggle-btn selected" onclick="selectTone('general')"
+                style="text-align:left;padding:10px 12px">
+          <span style="font-weight:500;display:block;margin-bottom:2px">General</span>
+          <span style="font-size:11px;color:var(--text-3)">Clear, specific, results-driven. Grows new followers.</span>
+        </button>
+        <button id="tone-personal" class="toggle-btn" onclick="selectTone('personal')"
+                style="text-align:left;padding:10px 12px">
+          <span style="font-weight:500;display:block;margin-bottom:2px">Personal</span>
+          <span style="font-size:11px;color:var(--text-3)">Story-driven, Heather's full voice. Deepens loyalty.</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- CAMPAIGN LENGTH -->
+    <div class="field-group">
+      <label class="field-label">Campaign length</label>
+      <span class="field-hint">Posts spread across this many days from the start date</span>
+      <div class="toggle-grid toggle-grid-4" role="group" aria-label="Campaign length">
+        <button class="toggle-btn" data-days="1"  onclick="selectCampaignLength(this)">
+          1 Day<small>Immediate</small>
+        </button>
+        <button class="toggle-btn selected" data-days="3" onclick="selectCampaignLength(this)">
+          3 Days<small>Short burst</small>
+        </button>
+        <button class="toggle-btn" data-days="7"  onclick="selectCampaignLength(this)">
+          1 Week<small>Steady drip</small>
+        </button>
+        <button class="toggle-btn" data-days="14" onclick="selectCampaignLength(this)">
+          2 Weeks<small>Full campaign</small>
+        </button>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label" for="start-date">Start date</label>
+      <input type="text" id="start-date" value="Today"
+             style="max-width:220px" placeholder="e.g. Today, Monday, March 24...">
+    </div>
+
+    <button class="generate-btn" id="generate-btn"
+            onclick="event.preventDefault(); generateContent()">
+      <span id="btn-label">Generate content campaign</span>
+      <span class="photo-pill" id="photo-indicator" style="display:none" aria-live="polite"></span>
+    </button>
+
+    <div class="error-msg" id="error-msg" role="alert" aria-live="assertive"></div>
+  </div><!-- /form-section -->
+
+  <!-- ── LOADING ─────────────────────────────────────────── -->
+  <div class="loading-state" id="loading-state" role="status" aria-live="polite">
+    <div class="loading-photo-strip" id="loading-photo-strip"></div>
+    <div class="loading-dots" aria-hidden="true">
+      <div class="loading-dot"></div>
+      <div class="loading-dot"></div>
+      <div class="loading-dot"></div>
+    </div>
+    <p class="loading-text" id="loading-text">Building your campaign...</p>
+    <div class="skeleton-grid">
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card" style="height:60px;opacity:.7"></div>
+      <div class="skeleton-card" style="height:60px;opacity:.4"></div>
+    </div>
+  </div>
+
+  <!-- ── RESULTS ─────────────────────────────────────────── -->
+  <div class="results-section" id="results-section">
+
+    <div class="results-header">
+      <span class="results-title">Your content campaign</span>
+      <button class="reset-btn" onclick="resetForm()">New job</button>
+    </div>
+    <p class="results-subtitle" id="results-subtitle"></p>
+
+    <!-- Calendar -->
+    <div class="calendar-wrap" id="calendar-wrap">
+      <div class="cal-header" id="cal-header" aria-hidden="true"></div>
+      <div class="calendar-grid" id="calendar-grid" role="grid" aria-label="Campaign calendar"></div>
+      <p class="cal-hint">Click a highlighted day to view its posts</p>
+    </div>
+
+    <!-- Post list -->
+    <div class="campaign-nav">
+      <span class="campaign-count" id="campaign-count" aria-live="polite"></span>
+      <button class="bulk-approve-btn" onclick="approveAll()">Approve all</button>
+    </div>
+    <div id="posts-list"></div>
+
+  </div><!-- /results-section -->
+
+</div><!-- /app -->
+
+<!-- Load prompts first (provides window.StokePrompts), then app logic -->
+<script src="js/prompts.js"></script>
+<script src="js/stoke.js"></script>
+</body>
+</html>
