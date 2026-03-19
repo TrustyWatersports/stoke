@@ -23,6 +23,10 @@
     <span class="wordmark">Stoke</span>
     <span class="version-badge">v8</span>
     <span class="tagline">Turn your work into growth</span>
+    <a href="settings.html" style="font-size:12px;color:var(--text-3);text-decoration:none;padding:4px 10px;border:0.5px solid var(--border);border-radius:20px;transition:all .15s" onmouseover="this.style.color='var(--green)';this.style.borderColor='var(--green)'" onmouseout="this.style.color='var(--text-3)';this.style.borderColor='var(--border)'">⚙ Settings</a>
+    <button onclick="openHistory()" style="font-size:12px;color:var(--text-3);background:none;padding:4px 10px;border:0.5px solid var(--border);border-radius:20px;cursor:pointer;font-family:var(--font-body);transition:all .15s;display:inline-flex;align-items:center;gap:5px" onmouseover="this.style.color='var(--green)';this.style.borderColor='var(--green)'" onmouseout="this.style.color='var(--text-3)';this.style.borderColor='var(--border)'">
+      ⏱ History <span id="history-badge" style="display:none;background:var(--green);color:#fff;border-radius:20px;padding:1px 6px;font-size:10px;font-weight:600"></span>
+    </button>
   </div>
 
   <!-- ── FORM ───────────────────────────────────────────── -->
@@ -58,14 +62,8 @@
         <span class="field-label-sub">(select all that apply)</span>
         <span class="selection-count" id="job-type-count"></span>
       </label>
-      <div class="toggle-grid toggle-grid-3" role="group" aria-label="Job type">
-        <button class="toggle-btn" data-val="Custom Rigging Build"   onclick="toggleJobType(this)">Custom Rigging</button>
-        <button class="toggle-btn" data-val="Kayak Sale"             onclick="toggleJobType(this)">Kayak Sale</button>
-        <button class="toggle-btn" data-val="Demo Day Event"         onclick="toggleJobType(this)">Demo Day</button>
-        <button class="toggle-btn" data-val="Rental or Tour"         onclick="toggleJobType(this)">Rental / Tour</button>
-        <button class="toggle-btn" data-val="Sailboat Sale or Lesson" onclick="toggleJobType(this)">Sailing</button>
-        <button class="toggle-btn" data-val="Repair or Service"      onclick="toggleJobType(this)">Repair / Service</button>
-      </div>
+      <!-- Populated dynamically from settings by stoke.js applySettingsToForm() -->
+      <div class="toggle-grid toggle-grid-3" id="job-type-grid" role="group" aria-label="Job type"></div>
     </div>
 
     <div class="field-group">
@@ -219,6 +217,31 @@
   </div><!-- /results-section -->
 
 </div><!-- /app -->
+
+<!-- ── HISTORY PANEL ──────────────────────────────────── -->
+<div id="history-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:100"></div>
+<div id="history-panel" style="position:fixed;top:0;right:-380px;width:360px;max-width:95vw;height:100vh;background:var(--bg);border-left:0.5px solid var(--border);z-index:101;transition:right .25s ease;overflow:hidden;display:flex;flex-direction:column">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.25rem 1rem;border-bottom:0.5px solid var(--border);flex-shrink:0">
+    <span style="font-family:var(--font-serif);font-size:18px;color:var(--text)">Campaign history</span>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button onclick="clearHistory()" style="font-size:11px;color:var(--text-3);background:none;border:0.5px solid var(--border);border-radius:var(--radius);padding:4px 8px;cursor:pointer;font-family:var(--font-body)">Clear all</button>
+      <button onclick="closeHistory()" style="font-size:18px;color:var(--text-2);background:none;border:none;cursor:pointer;line-height:1;padding:4px">&#x2715;</button>
+    </div>
+  </div>
+  <div id="history-list" style="overflow-y:auto;flex:1;padding:0.75rem"></div>
+</div>
+<style>
+  #history-panel.open { right: 0; }
+  .history-item { padding:12px; margin-bottom:6px; background:var(--bg-2); border:0.5px solid var(--border); border-radius:var(--radius); cursor:pointer; transition:border-color .15s; }
+  .history-item:hover { border-color:var(--green); }
+  .history-item-header { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:3px; }
+  .history-job { font-size:13px; font-weight:500; color:var(--text); }
+  .history-date { font-size:10px; color:var(--text-3); white-space:nowrap; margin-top:1px; }
+  .history-meta { font-size:11px; color:var(--text-3); margin-bottom:4px; }
+  .history-preview { font-size:11px; color:var(--text-2); line-height:1.4; margin-bottom:5px; font-style:italic; }
+  .history-channels { display:flex; gap:4px; flex-wrap:wrap; }
+  .history-ch-dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+</style>
 
 <!-- Load prompts first (provides window.StokePrompts), then app logic -->
 <script src="js/prompts.js"></script>

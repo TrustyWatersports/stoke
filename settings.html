@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stoke — Settings</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/stoke.css">
+<style>
+.settings-nav { display:flex; gap:4px; margin-bottom:2rem; background:var(--bg-2); border-radius:var(--radius); padding:4px; border:0.5px solid var(--border); }
+.nav-tab { flex:1; padding:8px 12px; font-size:12px; font-family:var(--font-body); font-weight:500; border:none; border-radius:6px; background:transparent; color:var(--text-2); cursor:pointer; transition:all 0.15s; text-align:center; min-height:36px; }
+.nav-tab:hover { color:var(--text); }
+.nav-tab.active { background:var(--bg); color:var(--green); box-shadow:0 1px 4px rgba(0,0,0,0.08); }
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+.settings-section { margin-bottom:2rem; }
+.settings-section-title { font-family:var(--font-serif); font-size:16px; color:var(--text); margin-bottom:0.25rem; }
+.settings-section-desc { font-size:12px; color:var(--text-3); margin-bottom:1rem; line-height:1.5; }
+.editable-list { display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
+.editable-item { display:flex; align-items:center; gap:8px; padding:8px 10px; background:var(--bg-2); border:0.5px solid var(--border); border-radius:var(--radius); font-size:13px; color:var(--text); }
+.editable-item input[type="text"] { flex:1; border:none; background:transparent; font-size:13px; font-family:var(--font-body); color:var(--text); outline:none; padding:0; }
+.drag-handle { color:var(--text-3); cursor:grab; font-size:14px; line-height:1; flex-shrink:0; }
+.item-delete { width:22px; height:22px; border:none; background:none; color:var(--text-3); cursor:pointer; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:14px; transition:all 0.15s; flex-shrink:0; }
+.item-delete:hover { background:#fdf0f0; color:#c0392b; }
+.add-item-btn { display:flex; align-items:center; gap:6px; padding:7px 10px; font-size:12px; font-family:var(--font-body); font-weight:500; color:var(--green); background:var(--green-light); border:0.5px dashed var(--green); border-radius:var(--radius); cursor:pointer; transition:all 0.15s; width:100%; min-height:36px; }
+.toggle-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:0.5px solid var(--border); }
+.toggle-row:last-child { border-bottom:none; }
+.toggle-row-label { font-size:13px; font-weight:500; color:var(--text); }
+.toggle-row-desc { font-size:11px; color:var(--text-3); margin-top:1px; }
+.toggle-switch { position:relative; width:40px; height:22px; flex-shrink:0; }
+.toggle-switch input { opacity:0; width:0; height:0; }
+.toggle-slider { position:absolute; inset:0; background:var(--border-2); border-radius:22px; cursor:pointer; transition:background 0.2s; }
+.toggle-slider::before { content:''; position:absolute; width:16px; height:16px; left:3px; top:3px; background:white; border-radius:50%; transition:transform 0.2s; box-shadow:0 1px 3px rgba(0,0,0,0.2); }
+.toggle-switch input:checked + .toggle-slider { background:var(--green); }
+.toggle-switch input:checked + .toggle-slider::before { transform:translateX(18px); }
+.channel-card { display:flex; align-items:center; gap:12px; padding:12px; background:var(--bg-2); border:0.5px solid var(--border); border-radius:var(--radius); margin-bottom:6px; }
+.channel-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.channel-info { flex:1; }
+.channel-name { font-size:13px; font-weight:500; color:var(--text); }
+.channel-status { font-size:11px; color:var(--text-3); margin-top:1px; }
+.connect-btn { font-size:11px; font-family:var(--font-body); font-weight:500; padding:5px 12px; border-radius:20px; border:0.5px solid var(--border-2); background:var(--bg); color:var(--text-2); cursor:pointer; transition:all 0.15s; min-height:30px; }
+.connect-btn:hover { border-color:var(--green); color:var(--green); }
+.voice-textarea { width:100%; min-height:180px; padding:12px; font-size:13px; font-family:var(--font-body); line-height:1.7; border:0.5px solid var(--border-2); border-radius:var(--radius); background:var(--bg); color:var(--text); resize:vertical; outline:none; transition:border-color 0.15s; }
+.voice-textarea:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(26,107,74,0.1); }
+.color-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.color-swatch { width:32px; height:32px; border-radius:6px; border:0.5px solid var(--border-2); cursor:pointer; overflow:hidden; flex-shrink:0; }
+.color-swatch input[type="color"] { width:140%; height:140%; margin:-20%; border:none; cursor:pointer; padding:0; }
+.color-label { font-size:13px; color:var(--text); flex:1; }
+.color-value { font-size:11px; color:var(--text-3); font-family:monospace; }
+.save-bar { position:sticky; bottom:0; background:var(--bg); border-top:0.5px solid var(--border); padding:1rem 0 0; margin-top:2rem; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.save-status { font-size:12px; color:var(--text-3); }
+.save-status.saved { color:var(--green); }
+.save-btn { padding:10px 24px; font-size:14px; font-family:var(--font-serif); background:var(--green); color:white; border:none; border-radius:var(--radius); cursor:pointer; transition:background 0.15s; min-height:44px; }
+.save-btn:hover { background:var(--green-mid); }
+.coming-soon { display:inline-flex; align-items:center; font-size:10px; font-weight:500; color:var(--text-3); background:var(--bg-3); border:0.5px solid var(--border); padding:2px 7px; border-radius:20px; margin-left:6px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <div class="logo" aria-hidden="true">
+      <svg viewBox="0 0 20 20" fill="none" width="22" height="22">
+        <path d="M10 2C10 2 4 8 4 12a6 6 0 0012 0c0-4-6-10-6-10z" fill="white" opacity=".95"/>
+        <path d="M10 8c0 0-2 3-2 5a2 2 0 004 0c0-2-2-5-2-5z" fill="white" opacity=".45"/>
+      </svg>
+    </div>
+    <span class="wordmark">Stoke</span>
+    <span class="version-badge">v8</span>
+    <span class="tagline" style="margin-left:auto">
+      <a href="index.html" style="font-size:12px;color:var(--green);text-decoration:none;font-weight:500">← Back to generator</a>
+    </span>
+  </div>
+
+  <div style="margin-bottom:1.5rem">
+    <div style="font-family:var(--font-serif);font-size:22px;color:var(--text);margin-bottom:4px">Settings</div>
+    <div style="font-size:13px;color:var(--text-2)">Customize Stoke for your business. Changes apply to all future campaigns.</div>
+  </div>
+
+  <div class="settings-nav" role="tablist">
+    <button class="nav-tab active" onclick="switchTab('business')" role="tab">Business</button>
+    <button class="nav-tab" onclick="switchTab('voice')" role="tab">Voice & Tone</button>
+    <button class="nav-tab" onclick="switchTab('content')" role="tab">Content</button>
+    <button class="nav-tab" onclick="switchTab('channels')" role="tab">Channels</button>
+    <button class="nav-tab" onclick="switchTab('appearance')" role="tab">Appearance</button>
+  </div>
+
+  <!-- TAB 1 — BUSINESS -->
+  <div class="tab-panel active" id="tab-business">
+    <div class="settings-section">
+      <div class="settings-section-title">Business identity</div>
+      <div class="settings-section-desc">Used in every post, hashtag set, and email. The AI uses this context to write authentically about your location and specialty.</div>
+      <div class="field-group">
+        <label class="field-label" for="biz-name">Business name</label>
+        <input type="text" id="biz-name" value="Trusty Sail & Paddle" placeholder="Your business name">
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="biz-tagline">Tagline or one-liner</label>
+        <input type="text" id="biz-tagline" value="Crystal Coast kayak and sailboat experts" placeholder="What you do in one line">
+      </div>
+      <div class="field-group" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <label class="field-label" for="biz-city">City / Region</label>
+          <input type="text" id="biz-city" value="Morehead City, NC" placeholder="City, State">
+        </div>
+        <div>
+          <label class="field-label" for="biz-area">Local area name</label>
+          <input type="text" id="biz-area" value="Crystal Coast" placeholder="e.g. Crystal Coast">
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="biz-specialty">Business specialty</label>
+        <span class="field-hint">What makes you different? The AI references this for positioning.</span>
+        <input type="text" id="biz-specialty" value="Custom kayak rigging, US distributor for Topper & Topaz sailboats, tournament fishing" placeholder="Your unique specialty">
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="settings-section">
+      <div class="settings-section-title">Contact & links</div>
+      <div class="settings-section-desc">Used in email footers and Google Business posts.</div>
+      <div class="field-group" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <label class="field-label" for="biz-phone">Shop phone</label>
+          <input type="text" id="biz-phone" value="(252) 499-9911">
+        </div>
+        <div>
+          <label class="field-label" for="biz-phone2">Waterfront phone</label>
+          <input type="text" id="biz-phone2" value="(252) 515-4866">
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="biz-website">Website</label>
+        <input type="text" id="biz-website" value="trustysailandpaddle.com">
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="biz-address">Address</label>
+        <input type="text" id="biz-address" value="5300 Highway 70 W, Morehead City, NC">
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="settings-section">
+      <div class="settings-section-title">Default hashtags</div>
+      <div class="settings-section-desc">Added to every Instagram post. Drag to reorder.</div>
+      <div class="editable-list" id="hashtag-list"></div>
+      <button class="add-item-btn" onclick="addHashtag()">+ Add hashtag</button>
+    </div>
+  </div>
+
+  <!-- TAB 2 — VOICE -->
+  <div class="tab-panel" id="tab-voice">
+    <div class="settings-section">
+      <div class="settings-section-title">General style</div>
+      <div class="settings-section-desc">Used when "General" writing style is selected.</div>
+      <div class="field-group">
+        <label class="field-label" for="voice-general-desc">Style description</label>
+        <textarea class="voice-textarea" id="voice-general-desc">Write clearly and directly. Lead with the most compelling specific fact or result. Use concrete details — numbers, names, products, real outcomes. Make it immediately scannable for someone discovering Trusty Sail & Paddle for the first time. Professional but warm. Stop-the-scroll energy without being salesy. No emoji.</textarea>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="settings-section">
+      <div class="settings-section-title">Personal style — Heather's voice</div>
+      <div class="settings-section-desc">Used when "Personal" writing style is selected. Edit to shape exactly how this voice comes through.</div>
+      <div class="field-group">
+        <label class="field-label" for="voice-author-name">Author name</label>
+        <input type="text" id="voice-author-name" value="Heather Fournel">
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="voice-personal-desc">Voice guide</label>
+        <span class="field-hint">The more specific, the better.</span>
+        <textarea class="voice-textarea" id="voice-personal-desc" style="min-height:240px">Write in Heather Fournel's full authentic voice.
+
+Open with the reader's emotional world or a vivid human scene — NEVER with a product or price.
+
+Alternate short punchy sentences (emotional impact) with longer flowing sentences (scene-building).
+
+Use rhetorical questions naturally — genuine processing out loud with the reader.
+
+Address the reader as "you" — intimate, not broadcast.
+
+End with a crystallized memorable line — short, declarative, a real conviction simply stated.
+
+Values: community over transaction, human connection as purpose, courage to say what others only think.
+
+Signature phrases: "on the water", "lit up from the inside", "the heart of the matter", "every single"
+
+Never: emoji, corporate language, leading with product or price, aggressive CTAs. Commerce is always the vehicle, never the point.</textarea>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="settings-section">
+      <div class="settings-section-title">Tone preferences</div>
+      <div class="toggle-row">
+        <div><div class="toggle-row-label">Use emoji in posts</div><div class="toggle-row-desc">Allow the AI to include emoji</div></div>
+        <label class="toggle-switch"><input type="checkbox" id="tone-emoji"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div><div class="toggle-row-label">Include price mentions</div><div class="toggle-row-desc">AI may reference specific product prices</div></div>
+        <label class="toggle-switch"><input type="checkbox" id="tone-prices" checked><span class="toggle-slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div><div class="toggle-row-label">Include phone number in posts</div><div class="toggle-row-desc">Add phone to CTAs in Google Business and email</div></div>
+        <label class="toggle-switch"><input type="checkbox" id="tone-phone" checked><span class="toggle-slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div><div class="toggle-row-label">Tag customer names when provided</div><div class="toggle-row-desc">Reference customers by first name in posts</div></div>
+        <label class="toggle-switch"><input type="checkbox" id="tone-names" checked><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3 — CONTENT -->
+  <div class="tab-panel" id="tab-content">
+    <div class="settings-section">
+      <div class="settings-section-title">Job types</div>
+      <div class="settings-section-desc">These appear as toggle buttons on the main generator. Drag to reorder.</div>
+      <div class="editable-list" id="job-type-list"></div>
+      <button class="add-item-btn" onclick="addJobType()">+ Add job type</button>
+    </div>
+    <div class="divider"></div>
+    <div class="settings-section">
+      <div class="settings-section-title">Default channels</div>
+      <div class="settings-section-desc">Which channels are selected by default when the generator loads.</div>
+      <div class="toggle-row"><div><div class="toggle-row-label">Instagram</div><div class="toggle-row-desc">Caption + hashtags</div></div><label class="toggle-switch"><input type="checkbox" data-channel="INSTAGRAM" checked><span class="toggle-slider"></span></label></div>
+      <div class="toggle-row"><div><div class="toggle-row-label">Facebook</div><div class="toggle-row-desc">Long-form post</div></div><label class="toggle-switch"><input type="checkbox" data-channel="FACEBOOK" checked><span class="toggle-slider"></span></label></div>
+      <div class="toggle-row"><div><div class="toggle-row-label">TikTok / Reels</div><div class="toggle-row-desc">Video script</div></div><label class="toggle-switch"><input type="checkbox" data-channel="TIKTOK"><span class="toggle-slider"></span></label></div>
+      <div class="toggle-row"><div><div class="toggle-row-label">Google Business</div><div class="toggle-row-desc">Business update post</div></div><label class="toggle-switch"><input type="checkbox" data-channel="GOOGLE" checked><span class="toggle-slider"></span></label></div>
+      <div class="toggle-row"><div><div class="toggle-row-label">Customer Email</div><div class="toggle-row-desc">Follow-up email</div></div><label class="toggle-switch"><input type="checkbox" data-channel="EMAIL" checked><span class="toggle-slider"></span></label></div>
+      <div class="toggle-row"><div><div class="toggle-row-label">YouTube Shorts</div><div class="toggle-row-desc">Video script</div></div><label class="toggle-switch"><input type="checkbox" data-channel="YOUTUBE"><span class="toggle-slider"></span></label></div>
+    </div>
+    <div class="divider"></div>
+    <div class="settings-section">
+      <div class="settings-section-title">Default campaign length</div>
+      <div class="toggle-grid toggle-grid-4" style="margin-top:4px">
+        <button class="toggle-btn" data-default-days="1" onclick="selectDefaultDays(this)">1 Day<small>Immediate</small></button>
+        <button class="toggle-btn selected" data-default-days="3" onclick="selectDefaultDays(this)">3 Days<small>Short burst</small></button>
+        <button class="toggle-btn" data-default-days="7" onclick="selectDefaultDays(this)">1 Week<small>Steady drip</small></button>
+        <button class="toggle-btn" data-default-days="14" onclick="selectDefaultDays(this)">2 Weeks<small>Full campaign</small></button>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="settings-section">
+      <div class="settings-section-title">Content angles</div>
+      <div class="settings-section-desc">The emotional focus of each day. These rotate in order.</div>
+      <div class="editable-list" id="angles-list"></div>
+      <button class="add-item-btn" onclick="addAngle()">+ Add angle</button>
+    </div>
+  </div>
+
+  <!-- TAB 4 — CHANNELS -->
+  <div class="tab-panel" id="tab-channels">
+    <div class="settings-section">
+      <div class="settings-section-title">Publishing connections</div>
+      <div class="settings-section-desc">Connect your social accounts to publish directly from Stoke. You approve everything before it goes live.</div>
+    </div>
+    <div class="channel-card"><div class="channel-dot" style="background:#E1306C"></div><div class="channel-info"><div class="channel-name">Instagram</div><div class="channel-status">Not connected — copy & paste required</div></div><button class="connect-btn" onclick="showComingSoon('Instagram')">Connect</button></div>
+    <div class="channel-card"><div class="channel-dot" style="background:#1877F2"></div><div class="channel-info"><div class="channel-name">Facebook Page</div><div class="channel-status">Not connected — copy & paste required</div></div><button class="connect-btn" onclick="showComingSoon('Facebook')">Connect</button></div>
+    <div class="channel-card"><div class="channel-dot" style="background:#4285F4"></div><div class="channel-info"><div class="channel-name">Google Business Profile</div><div class="channel-status">Not connected — copy & paste required</div></div><button class="connect-btn" onclick="showComingSoon('Google Business')">Connect</button></div>
+    <div class="channel-card"><div class="channel-dot" style="background:#1a6b4a"></div><div class="channel-info"><div class="channel-name">Email <span class="coming-soon">Klaviyo / Mailchimp</span></div><div class="channel-status">Not connected — manual send required</div></div><button class="connect-btn" onclick="showComingSoon('Email')">Connect</button></div>
+    <div class="channel-card"><div class="channel-dot" style="background:#010101"></div><div class="channel-info"><div class="channel-name">TikTok <span class="coming-soon">Script only</span></div><div class="channel-status">Scripts generated — video recording is manual</div></div><button class="connect-btn" onclick="showComingSoon('TikTok')">Connect</button></div>
+    <div class="channel-card"><div class="channel-dot" style="background:#FF0000"></div><div class="channel-info"><div class="channel-name">YouTube Shorts <span class="coming-soon">Script only</span></div><div class="channel-status">Scripts generated — video recording is manual</div></div><button class="connect-btn" onclick="showComingSoon('YouTube')">Connect</button></div>
+    <div style="margin-top:1.5rem;padding:14px;background:var(--bg-2);border-radius:var(--radius);border:0.5px solid var(--border)">
+      <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:4px">📌 Coming next</div>
+      <div style="font-size:12px;color:var(--text-2);line-height:1.6">Instagram + Facebook direct publishing via Meta Graph API ships first. Google Business follows. Email via Klaviyo/Mailchimp will sync with your Shopify customer list.</div>
+    </div>
+  </div>
+
+  <!-- TAB 5 — APPEARANCE -->
+  <div class="tab-panel" id="tab-appearance">
+    <div class="settings-section">
+      <div class="settings-section-title">Brand colors</div>
+      <div class="color-row"><div class="color-swatch"><input type="color" id="color-primary" value="#1a6b4a" oninput="updateColor('--green', this.value)"></div><div class="color-label">Primary / Brand color</div><div class="color-value" id="color-primary-val">#1a6b4a</div></div>
+      <div class="color-row"><div class="color-swatch"><input type="color" id="color-accent" value="#0f4a32" oninput="updateColor('--green-mid', this.value)"></div><div class="color-label">Accent (hover state)</div><div class="color-value" id="color-accent-val">#0f4a32</div></div>
+    </div>
+    <div class="divider"></div>
+    <div class="settings-section">
+      <div class="settings-section-title">Interface preferences</div>
+      <div class="toggle-row"><div><div class="toggle-row-label">Auto-approve single-day campaigns</div><div class="toggle-row-desc">Skip review step when only 1 day is generated</div></div><label class="toggle-switch"><input type="checkbox" id="pref-auto-approve"><span class="toggle-slider"></span></label></div>
+      <div class="toggle-row"><div><div class="toggle-row-label">Show photo strip on every card</div><div class="toggle-row-desc">Always show photo thumbnails on content cards</div></div><label class="toggle-switch"><input type="checkbox" id="pref-photo-strip" checked><span class="toggle-slider"></span></label></div>
+    </div>
+    <div class="divider"></div>
+    <div class="settings-section">
+      <div class="settings-section-title">About this installation</div>
+      <div style="font-size:12px;color:var(--text-2);line-height:1.8">
+        <div>Stoke <strong>v8.1</strong> — settings + history</div>
+        <div>Deployed at <strong>stoke-1jn.pages.dev</strong></div>
+        <div>GitHub: <strong>TrustyWatersports/stoke</strong></div>
+        <div style="margin-top:8px;color:var(--text-3)">Settings saved to localStorage on this device.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="save-bar">
+    <div class="save-status" id="save-status">Unsaved changes</div>
+    <div style="display:flex;gap:8px">
+      <button class="reset-btn" onclick="resetSettings()">Reset to defaults</button>
+      <button class="save-btn" onclick="saveSettings()">Save settings</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const DEFAULTS = {
+  jobTypes: ['Custom Rigging Build','Kayak Sale','Demo Day Event','Rental or Tour','Sailboat Sale or Lesson','Repair or Service'],
+  hashtags: ['#TrustySailPaddle','#CrystalCoast','#MoreheadCity','#KayakFishing','#Sailing','#TryBeforeYouBuy'],
+  angles:   ['Action & Energy','Product Detail','Customer Story','Values & Why','Community Call','Throwback & Reflect'],
+};
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+function renderList(listId, items) {
+  const el = document.getElementById(listId);
+  el.innerHTML = '';
+  items.forEach((item, i) => {
+    const row = document.createElement('div');
+    row.className = 'editable-item'; row.draggable = true;
+    row.innerHTML = `<span class="drag-handle" title="Drag to reorder">⠿</span><input type="text" value="${escHtml(item)}" onchange="markUnsaved()"><button class="item-delete" onclick="deleteItem('${listId}', ${i})" aria-label="Remove">✕</button>`;
+    el.appendChild(row);
+  });
+  initDragSort(listId);
+}
+
+function getListValues(listId) {
+  return Array.from(document.querySelectorAll(`#${listId} input[type="text"]`)).map(i => i.value.trim()).filter(Boolean);
+}
+
+function deleteItem(listId, idx) { const items = getListValues(listId); items.splice(idx, 1); renderList(listId, items); markUnsaved(); }
+
+function addJobType() { const items = getListValues('job-type-list'); items.push('New job type'); renderList('job-type-list', items); const inputs = document.querySelectorAll('#job-type-list input'); const last = inputs[inputs.length-1]; last.focus(); last.select(); markUnsaved(); }
+function addHashtag() { const items = getListValues('hashtag-list'); items.push('#NewTag'); renderList('hashtag-list', items); const inputs = document.querySelectorAll('#hashtag-list input'); const last = inputs[inputs.length-1]; last.focus(); last.select(); markUnsaved(); }
+function addAngle() { const items = getListValues('angles-list'); items.push('New angle'); renderList('angles-list', items); const inputs = document.querySelectorAll('#angles-list input'); const last = inputs[inputs.length-1]; last.focus(); last.select(); markUnsaved(); }
+
+function initDragSort(listId) {
+  const list = document.getElementById(listId); let dragging = null;
+  list.querySelectorAll('.editable-item').forEach(item => {
+    item.addEventListener('dragstart', () => { dragging = item; setTimeout(() => item.style.opacity = '0.4', 0); });
+    item.addEventListener('dragend',   () => { dragging = null; item.style.opacity = '1'; markUnsaved(); });
+    item.addEventListener('dragover',  e => { e.preventDefault(); const r = item.getBoundingClientRect(); const mid = r.top + r.height/2; list.insertBefore(dragging, e.clientY < mid ? item : item.nextSibling); });
+  });
+}
+
+function selectDefaultDays(btn) { document.querySelectorAll('[data-default-days]').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); markUnsaved(); }
+
+function updateColor(cssVar, value) {
+  document.documentElement.style.setProperty(cssVar, value);
+  const valEl = cssVar === '--green' ? document.getElementById('color-primary-val') : document.getElementById('color-accent-val');
+  if (valEl) valEl.textContent = value;
+  markUnsaved();
+}
+
+function gatherSettings() {
+  return {
+    business: { name:document.getElementById('biz-name').value, tagline:document.getElementById('biz-tagline').value, city:document.getElementById('biz-city').value, area:document.getElementById('biz-area').value, specialty:document.getElementById('biz-specialty').value, phone:document.getElementById('biz-phone').value, phone2:document.getElementById('biz-phone2').value, website:document.getElementById('biz-website').value, address:document.getElementById('biz-address').value },
+    hashtags: getListValues('hashtag-list'),
+    voice: { generalDesc:document.getElementById('voice-general-desc').value, authorName:document.getElementById('voice-author-name').value, personalDesc:document.getElementById('voice-personal-desc').value, emoji:document.getElementById('tone-emoji').checked, prices:document.getElementById('tone-prices').checked, phone:document.getElementById('tone-phone').checked, names:document.getElementById('tone-names').checked },
+    content: { jobTypes:getListValues('job-type-list'), angles:getListValues('angles-list'), defaultDays:parseInt(document.querySelector('[data-default-days].selected')?.dataset.defaultDays||'3'), defaultChannels:Array.from(document.querySelectorAll('[data-channel]:checked')).map(c=>c.dataset.channel) },
+    appearance: { colorPrimary:document.getElementById('color-primary').value, colorAccent:document.getElementById('color-accent').value, autoApprove:document.getElementById('pref-auto-approve').checked, photoStrip:document.getElementById('pref-photo-strip').checked },
+  };
+}
+
+function applySettings(s) {
+  if (!s) return;
+  if (s.business) { ['name','tagline','city','area','specialty','phone','phone2','website','address'].forEach(k => { const el = document.getElementById('biz-'+k); if(el && s.business[k]!==undefined) el.value = s.business[k]; }); }
+  renderList('hashtag-list',  s.hashtags           || DEFAULTS.hashtags);
+  renderList('job-type-list', s.content?.jobTypes   || DEFAULTS.jobTypes);
+  renderList('angles-list',   s.content?.angles     || DEFAULTS.angles);
+  if (s.voice) { document.getElementById('voice-general-desc').value=s.voice.generalDesc||''; document.getElementById('voice-author-name').value=s.voice.authorName||''; document.getElementById('voice-personal-desc').value=s.voice.personalDesc||''; document.getElementById('tone-emoji').checked=!!s.voice.emoji; document.getElementById('tone-prices').checked=s.voice.prices!==false; document.getElementById('tone-phone').checked=s.voice.phone!==false; document.getElementById('tone-names').checked=s.voice.names!==false; }
+  if (s.content) { document.querySelectorAll('[data-default-days]').forEach(b=>b.classList.remove('selected')); const db=document.querySelector(`[data-default-days="${s.content.defaultDays||3}"]`); if(db)db.classList.add('selected'); const ch=s.content.defaultChannels||[]; document.querySelectorAll('[data-channel]').forEach(c=>{c.checked=ch.includes(c.dataset.channel);}); }
+  if (s.appearance) { const cp=s.appearance.colorPrimary||'#1a6b4a'; const ca=s.appearance.colorAccent||'#0f4a32'; document.getElementById('color-primary').value=cp; document.getElementById('color-accent').value=ca; document.getElementById('color-primary-val').textContent=cp; document.getElementById('color-accent-val').textContent=ca; updateColor('--green',cp); updateColor('--green-mid',ca); document.getElementById('pref-auto-approve').checked=!!s.appearance.autoApprove; document.getElementById('pref-photo-strip').checked=s.appearance.photoStrip!==false; }
+}
+
+function saveSettings() { localStorage.setItem('stoke_settings', JSON.stringify(gatherSettings())); const el=document.getElementById('save-status'); el.textContent='✓ Saved'; el.className='save-status saved'; setTimeout(()=>{el.textContent='All changes saved';},2000); }
+function resetSettings() { if(!confirm('Reset all settings to defaults?')) return; localStorage.removeItem('stoke_settings'); initLoad(); markUnsaved(); }
+function markUnsaved() { const el=document.getElementById('save-status'); el.textContent='Unsaved changes'; el.className='save-status'; }
+function showComingSoon(p) { alert(`${p} direct publishing is coming soon. Use the Copy button on each post card for now.`); }
+function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function initLoad() {
+  try { const raw=localStorage.getItem('stoke_settings'); const s=raw?JSON.parse(raw):null; if(s){applySettings(s);}else{renderList('hashtag-list',DEFAULTS.hashtags);renderList('job-type-list',DEFAULTS.jobTypes);renderList('angles-list',DEFAULTS.angles);} } catch(e) { renderList('hashtag-list',DEFAULTS.hashtags);renderList('job-type-list',DEFAULTS.jobTypes);renderList('angles-list',DEFAULTS.angles); }
+}
+
+document.addEventListener('input', e => { if(e.target.closest('.app')) markUnsaved(); });
+initLoad();
+</script>
+</body>
+</html>

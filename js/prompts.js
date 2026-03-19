@@ -5,41 +5,13 @@
  *   - Voice refinements don't require touching UI code
  *   - A/B testing prompts is possible without deploys
  *   - Heather's voice guide lives in one auditable place
- *
- * VOICE GUIDE — Heather Fournel, Trusty Sail & Paddle
- * Built from analysis of 5 blog posts (March 2026)
- *
- * Core identity:
- *   Writes as a deeply present human being who runs a business —
- *   not a business owner who occasionally writes. Commerce is always
- *   the vehicle, never the point.
- *
- * Structural signature:
- *   Opens with the reader's emotional world or a vivid human scene.
- *   Ends with crystallized memorable line — short, declarative, real.
- *   Short punchy sentences for emotional impact.
- *   Longer flowing sentences for scene-building.
- *
- * Values:
- *   Community over transaction. Human connection as purpose.
- *   Courage to say what others only think.
- *   Advocacy for the underdog — small dealers, local businesses.
- *
- * Phrases she uses:
- *   "on the water", "lit up from the inside", "the heart of the matter",
- *   "chart a course", "every single"
- *
- * Never:
- *   Generic outdoor brand language. Corporate superlatives.
- *   Aggressive CTAs. Emoji (unless specifically requested).
- *   Leading with product or price.
  */
 
 const TONE_INSTRUCTIONS = {
   general: `WRITING STYLE — General:
 Write clearly and directly. Lead with the most compelling specific fact or result.
 Use concrete details — numbers, names, products, real outcomes.
-Make it immediately scannable for someone discovering Trusty Sail & Paddle for the first time.
+Make it immediately scannable for someone discovering the business for the first time.
 Professional but warm. Stop-the-scroll energy without being salesy.
 No emoji.`,
 
@@ -54,8 +26,8 @@ No emoji. Never lead with product or price. Commerce is always the vehicle, neve
 };
 
 const CHANNEL_INSTRUCTIONS = {
-  INSTAGRAM: (angle) => `INSTAGRAM
-[${angle} angle. Caption 150-250 words + relevant hashtags. Hook in first line — make them stop scrolling. Ends with soft CTA or engaging question. No **bold markers** in the output.]`,
+  INSTAGRAM: (angle, hashtags) => `INSTAGRAM
+[${angle} angle. Caption 150-250 words. Hook in first line. Ends with soft CTA or question. Include these default hashtags: ${hashtags || '#CrystalCoast'}. No **bold markers** in the output.]`,
 
   FACEBOOK: (angle) => `FACEBOOK
 [${angle} angle. Post 200-300 words. More conversational and fuller story than Instagram. No hashtags needed. No **bold markers** in the output.]`,
@@ -90,31 +62,27 @@ const DAY_SCHEDULES = {
   14: [1, 3, 5, 7, 10, 14]
 };
 
-/**
- * buildCampaignPrompt
- *
- * Shadow paths:
- *   - jobType empty → defaults to 'General job'
- *   - channels empty → defaults to ['INSTAGRAM','FACEBOOK']
- *   - validPhotoCount 0 → photo instruction omitted
- *   - campaignDays not in DAY_SCHEDULES → defaults to 3-day
- */
 function buildCampaignPrompt({
-  jobType,
-  customerMoment,
-  productsUsed,
-  problemSolved,
-  extraDetails,
-  startDate,
-  channels,
-  tone,
-  campaignDays,
-  validPhotoCount
+  jobType, customerMoment, productsUsed, problemSolved, extraDetails, startDate,
+  channels, tone, campaignDays, validPhotoCount,
+  businessName, businessArea, businessCity, businessPhone, businessWebsite, specialty,
+  defaultHashtags, voiceGeneral, voicePersonal, voiceAuthor, useEmoji, angles: customAngles,
 }) {
-  const safeChannels = (channels && channels.length > 0) ? channels : ['INSTAGRAM', 'FACEBOOK'];
-  const safeJobType = jobType || 'General job';
-  const safeTone = tone || 'general';
-  const schedule = DAY_SCHEDULES[campaignDays] || DAY_SCHEDULES[3];
+  const safeChannels  = (channels && channels.length > 0) ? channels : ['INSTAGRAM', 'FACEBOOK'];
+  const safeJobType   = jobType || 'General job';
+  const safeTone      = tone || 'general';
+  const schedule      = DAY_SCHEDULES[campaignDays] || DAY_SCHEDULES[3];
+  const safeAngles    = (customAngles && customAngles.length > 0) ? customAngles : ANGLES;
+  const bizName       = businessName   || 'Trusty Sail & Paddle';
+  const bizArea       = businessArea   || 'Crystal Coast';
+  const bizCity       = businessCity   || 'Morehead City, NC';
+  const bizWebsite    = businessWebsite || 'trustysailandpaddle.com';
+  const hashtagStr    = (defaultHashtags && defaultHashtags.length > 0) ? defaultHashtags.join(' ') : '#CrystalCoast #KayakFishing';
+
+  const generalVoice  = voiceGeneral  || TONE_INSTRUCTIONS.general;
+  const personalVoice = voicePersonal
+    ? `WRITING STYLE — Personal (${voiceAuthor || 'Personal'} voice):\n${voicePersonal}`
+    : TONE_INSTRUCTIONS.personal;
 
   const photoInstruction = validPhotoCount > 0
     ? `\nPHOTOS: You have been provided ${validPhotoCount} image(s) of this job.
@@ -123,11 +91,9 @@ Weave specific visual observations naturally into posts. Reference different vis
 Make the reader feel they can see exactly what happened.`
     : '';
 
-  // Build day blocks
-  // Day 1 gets all selected channels. Subsequent days rotate through 2 channels for variety.
   let dayBlocks = '';
   schedule.forEach((dayNum, idx) => {
-    const angle = ANGLES[idx % ANGLES.length];
+    const angle = safeAngles[idx % safeAngles.length];
     let dayChannels;
     if (idx === 0) {
       dayChannels = safeChannels;
@@ -142,13 +108,14 @@ Make the reader feel they can see exactly what happened.`
     dayBlocks += `\n===DAY${dayNum}===\nANGLE: ${angle}\n`;
     dayChannels.forEach(ch => {
       const instr = CHANNEL_INSTRUCTIONS[ch];
-      if (instr) dayBlocks += `---${ch}---\n${instr(angle)}\n`;
+      if (instr) dayBlocks += `---${ch}---\n${ch === 'INSTAGRAM' ? instr(angle, hashtagStr) : instr(angle)}\n`;
     });
   });
 
-  return `You are generating a social media content campaign for Trusty Sail & Paddle, a family-owned kayak and sailboat shop in Morehead City, NC on the Crystal Coast. Campaign starts: ${startDate || 'today'}.
+  const activeTone = safeTone === 'personal' ? personalVoice : generalVoice;
+  return `You are generating a social media content campaign for ${bizName}, located in ${bizCity} (${bizArea}). Website: ${bizWebsite}. Specialty: ${specialty || 'watersports'}. Campaign starts: ${startDate || 'today'}.
 
-${TONE_INSTRUCTIONS[safeTone]}${photoInstruction}
+${activeTone}${photoInstruction}
 
 JOB DETAILS:
 Type: ${safeJobType}
