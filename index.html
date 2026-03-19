@@ -66,6 +66,10 @@
 }
 .day-section[draggable="true"] .day-badge { cursor:grab; }
 .day-section[draggable="true"] .day-badge::before { content:'⠿ '; opacity:0.4; font-size:12px; }
+.content-card.dragging { opacity:0.4; transform:scale(0.98); }
+.day-section.drop-target { outline:2px dashed var(--green); outline-offset:4px; border-radius:var(--radius); background:var(--green-light); }
+.drag-card-handle { color:var(--text-3); cursor:grab; font-size:14px; margin-right:4px; flex-shrink:0; }
+.drag-card-handle:hover { color:var(--green); }
 </style>
 </head>
 <body>
