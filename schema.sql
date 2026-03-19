@@ -3,9 +3,6 @@
 -- Run via: wrangler d1 execute stoke-db --file=schema.sql
 -- ============================================================
 
-PRAGMA journal_mode=WAL;
-PRAGMA foreign_keys=ON;
-
 CREATE TABLE IF NOT EXISTS businesses (
   id          TEXT PRIMARY KEY,
   name        TEXT NOT NULL,

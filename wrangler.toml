@@ -1,11 +1,10 @@
 name = "stoke"
 compatibility_date = "2024-09-23"
-pages_build_output_dir = "."
 
 [[d1_databases]]
 binding = "DB"
 database_name = "stoke-db"
-database_id   = "REPLACE_WITH_D1_DATABASE_ID"
+database_id   = "f5fbf67f-c694-4e40-bb84-402f5bba1c24"
 
 [[r2_buckets]]
 binding    = "PHOTOS"
