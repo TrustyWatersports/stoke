@@ -282,7 +282,7 @@
 
 <!-- ── HISTORY PANEL ──────────────────────────────────── -->
 <div id="history-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:100"></div>
-<div id="history-panel" style="position:fixed;top:0;right:-380px;width:360px;max-width:95vw;height:100vh;background:var(--bg);border-left:0.5px solid var(--border);z-index:101;transition:right .25s ease;overflow:hidden;display:flex;flex-direction:column">
+<div id="history-panel" class="history-panel-el">
   <div style="display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.25rem 1rem;border-bottom:0.5px solid var(--border);flex-shrink:0">
     <span style="font-family:var(--font-serif);font-size:18px;color:var(--text)">Campaign history</span>
     <div style="display:flex;align-items:center;gap:8px">
@@ -293,7 +293,8 @@
   <div id="history-list" style="overflow-y:auto;flex:1;padding:0.75rem"></div>
 </div>
 <style>
-  #history-panel.open { right: 0; }
+  .history-panel-el { position:fixed;top:0;right:-380px;width:360px;max-width:95vw;height:100vh;background:var(--bg);border-left:0.5px solid var(--border);z-index:101;transition:right .25s ease;overflow:hidden;display:flex;flex-direction:column; }
+  .history-panel-el.open { right: 0; }
   .history-item { padding:12px; margin-bottom:6px; background:var(--bg-2); border:0.5px solid var(--border); border-radius:var(--radius); cursor:pointer; transition:border-color .15s; }
   .history-item:hover { border-color:var(--green); }
   .history-item-header { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:3px; }

@@ -743,11 +743,14 @@ function updateHistoryBadge(count) {
 }
 function openHistory() {
   document.getElementById('history-panel').classList.add('open');
+  document.getElementById('history-panel').style.right = '0';
   document.getElementById('history-overlay').style.display = 'block';
   renderHistoryList();
 }
 function closeHistory() {
-  document.getElementById('history-panel').classList.remove('open');
+  const panel = document.getElementById('history-panel');
+  panel.classList.remove('open');
+  panel.style.right = '-380px';
   document.getElementById('history-overlay').style.display = 'none';
 }
 function renderHistoryList() {
