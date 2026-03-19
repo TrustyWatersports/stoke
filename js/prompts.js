@@ -1,10 +1,6 @@
 /**
- * prompts.js — All AI prompt templates for Stoke
- *
- * Separating prompts from UI logic means:
- *   - Voice refinements don't require touching UI code
- *   - A/B testing prompts is possible without deploys
- *   - Heather's voice guide lives in one auditable place
+ * prompts.js — All AI prompt templates for Stoke v8.2
+ * Updated: photo-to-post matching instructions
  */
 
 const TONE_INSTRUCTIONS = {
@@ -64,7 +60,7 @@ const DAY_SCHEDULES = {
 
 function buildCampaignPrompt({
   jobType, customerMoment, productsUsed, problemSolved, extraDetails, startDate,
-  channels, tone, campaignDays, validPhotoCount,
+  channels, tone, campaignDays, validPhotoCount, photoLabels,
   businessName, businessArea, businessCity, businessPhone, businessWebsite, specialty,
   defaultHashtags, voiceGeneral, voicePersonal, voiceAuthor, useEmoji, angles: customAngles,
 }) {
@@ -84,12 +80,35 @@ function buildCampaignPrompt({
     ? `WRITING STYLE — Personal (${voiceAuthor || 'Personal'} voice):\n${voicePersonal}`
     : TONE_INSTRUCTIONS.personal;
 
-  const photoInstruction = validPhotoCount > 0
-    ? `\nPHOTOS: You have been provided ${validPhotoCount} image(s) of this job.
-Carefully analyze what you see — boats, rigging components, water conditions, setting, people, gear, light, expressions.
-Weave specific visual observations naturally into posts. Reference different visual elements across different posts.
-Make the reader feel they can see exactly what happened.`
-    : '';
+  // Photo matching instructions
+  let photoInstruction = '';
+  if (validPhotoCount > 0) {
+    const labels = photoLabels && photoLabels.length > 0
+      ? photoLabels
+      : Array.from({ length: validPhotoCount }, (_, i) => `Photo ${i + 1}`);
+
+    if (validPhotoCount === 1) {
+      photoInstruction = `\nPHOTO: You have been provided 1 image (Photo 1).
+Carefully analyze what you see — boats, rigging, water, people, gear, setting, light.
+Weave specific visual details from this photo into every post naturally.`;
+    } else {
+      // Multiple photos — match each to a day
+      const photoAssignments = schedule.map((dayNum, idx) => {
+        const photoIdx = idx % validPhotoCount;
+        return `Day ${dayNum} → ${labels[photoIdx]}`;
+      }).join(', ');
+
+      photoInstruction = `\nPHOTOS: You have been provided ${validPhotoCount} images: ${labels.join(', ')}.
+Each image has been uploaded in order. Analyze each one carefully.
+
+PHOTO ASSIGNMENT — write each day's primary post specifically about the assigned photo:
+${photoAssignments}
+
+For each day, start with a PHOTO: N line (e.g., PHOTO: 1) before the first ---CHANNEL--- marker.
+Write as if that photo is the one being posted — describe specific visual details you see in it.
+Secondary posts on the same day may reference the same photo or complement it with other details.`;
+    }
+  }
 
   let dayBlocks = '';
   schedule.forEach((dayNum, idx) => {
@@ -106,6 +125,10 @@ Make the reader feel they can see exactly what happened.`
     }
 
     dayBlocks += `\n===DAY${dayNum}===\nANGLE: ${angle}\n`;
+    if (validPhotoCount > 1) {
+      const photoIdx = (idx % validPhotoCount) + 1;
+      dayBlocks += `PHOTO: ${photoIdx}\n`;
+    }
     dayChannels.forEach(ch => {
       const instr = CHANNEL_INSTRUCTIONS[ch];
       if (instr) dayBlocks += `---${ch}---\n${ch === 'INSTAGRAM' ? instr(angle, hashtagStr) : instr(angle)}\n`;

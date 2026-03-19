@@ -8,6 +8,65 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/stoke.css">
+<style>
+/* ── v8.2 additions ── */
+.stream-status {
+  display:none;
+  align-items:center;
+  gap:8px;
+  padding:10px 14px;
+  background:var(--green-light);
+  border:0.5px solid var(--green);
+  border-radius:var(--radius);
+  font-size:12px;
+  color:var(--green);
+  font-weight:500;
+  margin-bottom:1rem;
+  animation: pulse-border 2s infinite;
+}
+@keyframes pulse-border {
+  0%,100% { border-color: var(--green); }
+  50%      { border-color: transparent; }
+}
+.photo-label {
+  position:absolute;
+  bottom:0; left:0; right:0;
+  background:rgba(0,0,0,0.55);
+  color:#fff;
+  font-size:9px;
+  font-weight:500;
+  text-align:center;
+  padding:2px 0;
+  border-radius:0 0 var(--radius) var(--radius);
+}
+.photo-strip-item {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:2px;
+  cursor:pointer;
+}
+.photo-strip-item.featured .photo-strip-thumb { border:2.5px solid var(--green); }
+.photo-strip-label {
+  font-size:9px;
+  color:var(--text-3);
+  font-weight:500;
+}
+.photo-strip-item.featured .photo-strip-label { color:var(--green); }
+.featured-photo-label {
+  font-size:11px;
+  color:var(--text-3);
+  padding:4px 14px 6px;
+  font-style:italic;
+}
+.cal-cell.drag-over {
+  border-color:var(--green) !important;
+  background:var(--green-light) !important;
+  box-shadow:0 0 0 2px rgba(26,107,74,0.2);
+}
+.day-section[draggable="true"] .day-badge { cursor:grab; }
+.day-section[draggable="true"] .day-badge::before { content:'⠿ '; opacity:0.4; font-size:12px; }
+</style>
 </head>
 <body>
 <div class="app">
@@ -206,6 +265,9 @@
       <div class="calendar-grid" id="calendar-grid" role="grid" aria-label="Campaign calendar"></div>
       <p class="cal-hint">Click a highlighted day to view its posts</p>
     </div>
+
+    <!-- Streaming status -->
+    <div class="stream-status" id="stream-status">✦ Writing your campaign...</div>
 
     <!-- Post list -->
     <div class="campaign-nav">
