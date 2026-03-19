@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stoke — Sign in</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{--green:#1a6b4a;--green-mid:#0f4a32;--green-light:#f0f7f4;--bg:#fafaf9;--text:#111;--text-2:#444;--text-3:#888;--border:rgba(0,0,0,0.08);--radius:10px;--font-serif:'DM Serif Display',Georgia,serif;--font-body:'DM Sans',system-ui,sans-serif;}
+@media(prefers-color-scheme:dark){:root{--bg:#0f0f0e;--text:#f0ede8;--text-2:#aaa;--text-3:#666;--border:rgba(255,255,255,0.08);--green-light:rgba(26,107,74,0.12);}}
+body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+.card{width:100%;max-width:400px;background:var(--bg);border:0.5px solid var(--border);border-radius:16px;padding:40px 36px;box-shadow:0 4px 40px rgba(0,0,0,0.06);}
+.logo-row{display:flex;align-items:center;gap:10px;margin-bottom:32px;}
+.logo-mark{width:36px;height:36px;border-radius:10px;background:var(--green);display:flex;align-items:center;justify-content:center;}
+.wordmark{font-family:var(--font-serif);font-size:22px;color:var(--text);}
+h1{font-family:var(--font-serif);font-size:26px;margin-bottom:8px;}
+.subtitle{font-size:14px;color:var(--text-3);margin-bottom:32px;line-height:1.5;}
+label{display:block;font-size:12px;font-weight:500;color:var(--text-2);margin-bottom:6px;}
+input[type="email"]{width:100%;padding:12px 14px;font-size:15px;font-family:var(--font-body);border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);outline:none;transition:border-color 0.15s;margin-bottom:16px;}
+input[type="email"]:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(26,107,74,0.1);}
+.btn{width:100%;padding:14px;background:var(--green);color:white;border:none;border-radius:var(--radius);font-family:var(--font-serif);font-size:16px;cursor:pointer;transition:background 0.15s;min-height:48px;}
+.btn:hover{background:var(--green-mid);}
+.btn:disabled{opacity:0.6;cursor:default;}
+.status{display:none;margin-top:16px;padding:12px 14px;border-radius:var(--radius);font-size:13px;line-height:1.5;}
+.status.success{background:var(--green-light);color:var(--green);border:0.5px solid var(--green);}
+.status.error{background:#fdf0f0;color:#c0392b;border:0.5px solid #f5c6cb;}
+.footer{margin-top:32px;font-size:11px;color:var(--text-3);text-align:center;line-height:1.6;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo-row">
+    <div class="logo-mark">
+      <svg viewBox="0 0 20 20" fill="none" width="20" height="20">
+        <path d="M10 2C10 2 4 8 4 12a6 6 0 0012 0c0-4-6-10-6-10z" fill="white" opacity=".95"/>
+        <path d="M10 8c0 0-2 3-2 5a2 2 0 004 0c0-2-2-5-2-5z" fill="white" opacity=".45"/>
+      </svg>
+    </div>
+    <span class="wordmark">Stoke</span>
+  </div>
+  <h1>Sign in</h1>
+  <p class="subtitle">Enter your email and we'll send you a sign-in link. No password needed.</p>
+  <label for="email">Email address</label>
+  <input type="email" id="email" placeholder="you@yourbusiness.com" autocomplete="email" autofocus>
+  <button class="btn" id="btn" onclick="signIn()">Send sign-in link</button>
+  <div class="status" id="status"></div>
+  <div class="footer">Need access? Contact your Stoke administrator.</div>
+</div>
+<script>
+const params=new URLSearchParams(location.search);
+if(params.get('error')==='expired')show('That sign-in link has expired. Request a new one.','error');
+if(params.get('error')==='nouser')show('No account found for that email.','error');
+async function signIn(){
+  const email=document.getElementById('email').value.trim();
+  if(!email){show('Please enter your email address.','error');return;}
+  const btn=document.getElementById('btn');btn.disabled=true;btn.textContent='Sending...';
+  try{
+    const resp=await fetch('/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+    const data=await resp.json();
+    if(resp.ok){
+      show('✓ Check your email! Click the link to sign in.','success');btn.textContent='Email sent';
+      if(data.dev&&data.token)show(`Dev mode: <a href="/auth/verify?token=${data.token}" style="color:var(--green)">Click here to sign in</a>`,'success');
+    } else{show(data.error||'Something went wrong.','error');btn.disabled=false;btn.textContent='Send sign-in link';}
+  }catch(e){show('Connection error. Please try again.','error');btn.disabled=false;btn.textContent='Send sign-in link';}
+}
+function show(msg,type){const el=document.getElementById('status');el.innerHTML=msg;el.className=`status ${type}`;el.style.display='block';}
+document.getElementById('email').addEventListener('keydown',e=>{if(e.key==='Enter')signIn();});
+</script>
+</body>
+</html>

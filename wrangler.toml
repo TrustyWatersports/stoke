@@ -1,0 +1,26 @@
+name = "stoke"
+compatibility_date = "2024-09-23"
+pages_build_output_dir = "."
+
+[[d1_databases]]
+binding = "DB"
+database_name = "stoke-db"
+database_id   = "REPLACE_WITH_D1_DATABASE_ID"
+
+[[r2_buckets]]
+binding    = "PHOTOS"
+bucket_name = "stoke-photos"
+
+[[kv_namespaces]]
+binding = "KV"
+id      = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# Environment variables — set these in Cloudflare Dashboard
+# Pages → stoke → Settings → Environment Variables:
+#
+#   ANTHROPIC_API_KEY   — already set
+#   META_APP_ID         — 1684200919252951
+#   META_APP_SECRET     — set after resetting in Meta dashboard
+#   EMAIL_SECRET        — any random 32-char string
+#   APP_DOMAIN          — stoke-1jn.pages.dev (update when domain bought)
+#   SENDGRID_API_KEY    — leave blank for now (magic links logged to console)

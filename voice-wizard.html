@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stoke — Voice Wizard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/stoke.css">
+<style>
+.chat-window{border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:1rem;background:var(--bg);}
+.chat-messages{height:400px;overflow-y:auto;padding:1.25rem;display:flex;flex-direction:column;gap:1rem;}
+.chat-msg{display:flex;gap:10px;max-width:90%;animation:msg-in 0.25s ease;}
+@keyframes msg-in{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.chat-msg.user{align-self:flex-end;flex-direction:row-reverse;}
+.chat-avatar{width:28px;height:28px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;font-size:13px;color:white;flex-shrink:0;margin-top:2px;}
+.chat-msg.user .chat-avatar{background:var(--bg-3);color:var(--text);}
+.chat-bubble{background:var(--bg-2);border:0.5px solid var(--border);border-radius:12px;padding:10px 14px;font-size:13px;line-height:1.65;color:var(--text);}
+.chat-msg.user .chat-bubble{background:var(--green);color:white;border-color:var(--green);}
+.chat-typing{display:flex;gap:4px;padding:6px 0;}
+.chat-typing-dot{width:6px;height:6px;border-radius:50%;background:var(--text-3);animation:typing-bounce 1s infinite;}
+.chat-typing-dot:nth-child(2){animation-delay:0.15s;}.chat-typing-dot:nth-child(3){animation-delay:0.30s;}
+@keyframes typing-bounce{0%,60%,100%{transform:translateY(0);}30%{transform:translateY(-5px);}}
+.chat-input-row{display:flex;gap:8px;padding:12px;border-top:0.5px solid var(--border);background:var(--bg-2);}
+.chat-input{flex:1;padding:10px 12px;font-size:13px;font-family:var(--font-body);border:0.5px solid var(--border-2);border-radius:var(--radius);background:var(--bg);color:var(--text);outline:none;resize:none;min-height:44px;max-height:120px;transition:border-color 0.15s;}
+.chat-input:focus{border-color:var(--green);}
+.chat-send-btn{padding:10px 18px;background:var(--green);color:white;border:none;border-radius:var(--radius);font-family:var(--font-body);font-size:13px;font-weight:500;cursor:pointer;min-height:44px;flex-shrink:0;}
+.chat-send-btn:disabled{opacity:0.5;cursor:default;}
+.profile-preview{display:none;background:var(--bg-2);border:0.5px solid var(--green);border-radius:var(--radius);padding:1.5rem;margin-top:1.5rem;}
+.profile-field{margin-bottom:1rem;}
+.profile-field label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-3);margin-bottom:4px;}
+.profile-field textarea,.profile-field input{width:100%;font-size:13px;font-family:var(--font-body);line-height:1.65;border:0.5px solid var(--border-2);border-radius:6px;background:var(--bg);color:var(--text);padding:10px 12px;resize:vertical;outline:none;}
+.profile-field textarea:focus,.profile-field input:focus{border-color:var(--green);}
+.apply-btn{width:100%;padding:14px;background:var(--green);color:white;border:none;border-radius:var(--radius);font-family:var(--font-serif);font-size:16px;cursor:pointer;margin-top:1rem;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="logo"><svg viewBox="0 0 20 20" fill="none" width="22" height="22"><path d="M10 2C10 2 4 8 4 12a6 6 0 0012 0c0-4-6-10-6-10z" fill="white" opacity=".95"/><path d="M10 8c0 0-2 3-2 5a2 2 0 004 0c0-2-2-5-2-5z" fill="white" opacity=".45"/></svg></div>
+    <span class="wordmark">Stoke</span>
+    <span class="version-badge">v8</span>
+    <span class="tagline" style="margin-left:auto;display:flex;gap:12px;align-items:center">
+      <a href="settings.html" style="font-size:12px;color:var(--text-3);text-decoration:none">⚙ Settings</a>
+      <a href="index.html" style="font-size:12px;color:var(--green);text-decoration:none;font-weight:500">← Generator</a>
+    </span>
+  </div>
+
+  <div style="max-width:640px;margin:0 auto">
+    <div style="background:var(--bg-2);border:0.5px solid var(--border);border-radius:var(--radius);padding:1.5rem;margin-bottom:2rem">
+      <div style="font-family:var(--font-serif);font-size:20px;color:var(--text);margin-bottom:0.5rem">Voice Wizard ✦</div>
+      <div style="font-size:13px;color:var(--text-2);line-height:1.6">Have a conversation about your business. The wizard builds your voice profile automatically — ready to use in every campaign. Paste existing posts below first for best results.</div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label" for="sample-posts">Paste 2–3 existing posts (optional but powerful)</label>
+      <span class="field-hint">Your best Instagram captions, Facebook posts, or emails. The AI will analyze your writing style.</span>
+      <textarea id="sample-posts" rows="4" placeholder="Paste your best existing social posts here..."></textarea>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="chat-window">
+      <div class="chat-messages" id="chat-messages">
+        <div class="chat-msg assistant">
+          <div class="chat-avatar">✦</div>
+          <div class="chat-bubble">Hey! I'm here to help build your voice profile. Let's start simple — tell me about your business in your own words. What do you do, who do you serve, and what makes you different?</div>
+        </div>
+      </div>
+      <div class="chat-input-row">
+        <textarea class="chat-input" id="chat-input" placeholder="Type your answer..." rows="2" onkeydown="handleKey(event)"></textarea>
+        <button class="chat-send-btn" id="send-btn" onclick="sendMessage()">Send</button>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:1.5rem">
+      <button onclick="generateProfile()" style="flex:1;padding:12px;background:var(--green);color:white;border:none;border-radius:var(--radius);font-family:var(--font-serif);font-size:15px;cursor:pointer" id="gen-btn">Generate my voice profile →</button>
+      <button onclick="resetWizard()" style="padding:12px 16px;background:none;border:0.5px solid var(--border);border-radius:var(--radius);font-family:var(--font-body);font-size:13px;color:var(--text-3);cursor:pointer">Start over</button>
+    </div>
+
+    <div class="profile-preview" id="profile-preview">
+      <div style="font-family:var(--font-serif);font-size:16px;color:var(--text);margin-bottom:1rem">✓ Your voice profile — review and edit before saving</div>
+      <div class="profile-field"><label>Business name</label><input type="text" id="out-biz-name"></div>
+      <div class="profile-field"><label>City / Area</label><input type="text" id="out-biz-city"></div>
+      <div class="profile-field"><label>Specialty</label><input type="text" id="out-specialty"></div>
+      <div class="profile-field"><label>Default hashtags (space-separated)</label><input type="text" id="out-hashtags"></div>
+      <div class="profile-field"><label>General style guide</label><textarea id="out-general-voice" rows="4"></textarea></div>
+      <div class="profile-field"><label>Personal / owner voice guide</label><textarea id="out-personal-voice" rows="6"></textarea></div>
+      <button class="apply-btn" onclick="applyProfile()">Save to Settings and start generating →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const QUESTIONS=[
+  "Great. Tell me about your typical customer — who are they, what brings them to you, and what does a great visit look like?",
+  "What's a job or sale you're really proud of recently? Describe it like you'd tell a friend.",
+  "How would you describe your writing style? Formal or casual? Story-driven or direct? Do you use humor?",
+  "What do you NEVER want your brand to sound like? What would feel totally wrong?",
+  "Last one — what's the one thing about your business you wish more people understood?"
+];
+let history=[],qIdx=0,busy=false;
+
+function handleKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}}
+
+async function sendMessage(){
+  const input=document.getElementById('chat-input');const msg=input.value.trim();
+  if(!msg||busy)return;input.value='';
+  appendMsg(msg,'user');history.push({role:'user',content:msg});
+  if(qIdx<QUESTIONS.length){
+    busy=true;showTyping();await delay(800+Math.random()*500);hideTyping();
+    const r=QUESTIONS[qIdx++];appendMsg(r,'assistant');history.push({role:'assistant',content:r});
+    busy=false;return;
+  }
+  busy=true;showTyping();
+  try{
+    const samplePosts=document.getElementById('sample-posts').value.trim();
+    const prompt=`You are helping build a business voice profile. Ask a warm follow-up question based on what the owner said. Be specific, curious, conversational. 2-3 sentences max.${samplePosts?`\n\nSample posts:\n${samplePosts}`:''}
+\nConversation:\n${history.map(m=>`${m.role==='user'?'Owner':'You'}: ${m.content}`).join('\n')}\n\nRespond with one follow-up question only.`;
+    const resp=await fetch('/functions/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}]})});
+    const data=await resp.json();const reply=data.content?.[0]?.text?.trim()||"Tell me more about that.";
+    hideTyping();appendMsg(reply,'assistant');history.push({role:'assistant',content:reply});
+  }catch(e){hideTyping();appendMsg("Got it — click 'Generate my voice profile' when you're ready.",'assistant');}
+  busy=false;
+}
+
+async function generateProfile(){
+  if(history.length<2){alert('Answer a few questions first, then generate your profile.');return;}
+  const btn=document.getElementById('gen-btn');btn.textContent='Analyzing...';btn.disabled=true;
+  const samplePosts=document.getElementById('sample-posts').value.trim();
+  const prompt=`Based on this business owner interview, generate a complete voice profile as JSON only (no markdown, no backticks):\n${samplePosts?`\nSample posts:\n${samplePosts}\n`:''}\nInterview:\n${history.map(m=>`${m.role==='user'?'Owner':'Interviewer'}: ${m.content}`).join('\n')}\n\nJSON structure:\n{"businessName":"","city":"","specialty":"","hashtags":["#tag1"],"generalVoice":"3-4 sentences on clear specific writing style","personalVoice":"5-7 sentences on owner authentic voice with specific phrases and patterns","authorName":""}`;
+  try{
+    const resp=await fetch('/functions/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}]})});
+    const data=await resp.json();const raw=data.content?.[0]?.text?.trim()||'';
+    const profile=JSON.parse(raw.replace(/```json|```/g,'').trim());
+    document.getElementById('out-biz-name').value=profile.businessName||'';
+    document.getElementById('out-biz-city').value=profile.city||'';
+    document.getElementById('out-specialty').value=profile.specialty||'';
+    document.getElementById('out-hashtags').value=(profile.hashtags||[]).join(' ');
+    document.getElementById('out-general-voice').value=profile.generalVoice||'';
+    document.getElementById('out-personal-voice').value=profile.personalVoice||'';
+    if(profile.authorName)document.getElementById('out-personal-voice').dataset.authorName=profile.authorName;
+    document.getElementById('profile-preview').style.display='block';
+    document.getElementById('profile-preview').scrollIntoView({behavior:'smooth',block:'start'});
+    appendMsg("Your voice profile is ready below — review and edit it, then save to Settings.",'assistant');
+  }catch(e){appendMsg("I had trouble generating the profile. Try providing more detail about your business and writing style.",'assistant');console.error(e);}
+  btn.textContent='Regenerate profile';btn.disabled=false;
+}
+
+function applyProfile(){
+  const bizName=document.getElementById('out-biz-name').value.trim();
+  const bizCity=document.getElementById('out-biz-city').value.trim();
+  const specialty=document.getElementById('out-specialty').value.trim();
+  const hashtagStr=document.getElementById('out-hashtags').value.trim();
+  const genVoice=document.getElementById('out-general-voice').value.trim();
+  const perVoice=document.getElementById('out-personal-voice').value.trim();
+  const authorName=document.getElementById('out-personal-voice').dataset.authorName||'';
+  let existing={};try{existing=JSON.parse(localStorage.getItem('stoke_settings')||'{}');}catch(e){}
+  const hashtags=hashtagStr.split(/\s+/).filter(h=>h.startsWith('#'));
+  const updated={...existing,business:{...(existing.business||{}),name:bizName||existing.business?.name||'',city:bizCity||existing.business?.city||'',specialty:specialty||existing.business?.specialty||''},hashtags:hashtags.length>0?hashtags:(existing.hashtags||[]),voice:{...(existing.voice||{}),generalDesc:genVoice||existing.voice?.generalDesc||'',personalDesc:perVoice||existing.voice?.personalDesc||'',authorName:authorName||existing.voice?.authorName||''}};
+  localStorage.setItem('stoke_settings',JSON.stringify(updated));
+  alert('✓ Voice profile saved! Your next campaign will use it automatically.');
+  window.location.href='index.html';
+}
+
+function resetWizard(){
+  history=[];qIdx=0;
+  document.getElementById('chat-messages').innerHTML=`<div class="chat-msg assistant"><div class="chat-avatar">✦</div><div class="chat-bubble">Hey! I'm here to help build your voice profile. Let's start simple — tell me about your business in your own words. What do you do, who do you serve, and what makes you different?</div></div>`;
+  document.getElementById('profile-preview').style.display='none';
+  document.getElementById('sample-posts').value='';
+}
+
+function appendMsg(text,role){
+  const messages=document.getElementById('chat-messages');
+  const w=document.createElement('div');w.className=`chat-msg ${role}`;
+  w.innerHTML=`<div class="chat-avatar">${role==='assistant'?'✦':'👤'}</div><div class="chat-bubble">${text.replace(/\n/g,'<br>')}</div>`;
+  messages.appendChild(w);messages.scrollTop=messages.scrollHeight;
+}
+let typingEl=null;
+function showTyping(){const m=document.getElementById('chat-messages');typingEl=document.createElement('div');typingEl.className='chat-msg assistant';typingEl.id='typing';typingEl.innerHTML='<div class="chat-avatar">✦</div><div class="chat-bubble"><div class="chat-typing"><div class="chat-typing-dot"></div><div class="chat-typing-dot"></div><div class="chat-typing-dot"></div></div></div>';m.appendChild(typingEl);m.scrollTop=m.scrollHeight;}
+function hideTyping(){document.getElementById('typing')?.remove();}
+function delay(ms){return new Promise(r=>setTimeout(r,ms));}
+</script>
+</body>
+</html>
