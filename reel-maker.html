@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stoke — Reel Maker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/stoke.css">
+<style>
+/* ── REEL MAKER ─────────────────────────────────────────────── */
+.reel-layout { display:grid; grid-template-columns:1fr 360px; gap:2rem; align-items:start; }
+@media(max-width:800px){ .reel-layout { grid-template-columns:1fr; } }
+
+/* Photo drop zone */
+.reel-drop-zone {
+  border:1.5px dashed var(--border-2);
+  border-radius:var(--radius);
+  padding:2.5rem 1.5rem;
+  text-align:center;
+  cursor:pointer;
+  transition:all .2s;
+  background:var(--bg-2);
+  position:relative;
+}
+.reel-drop-zone.drag-over,.reel-drop-zone:hover { border-color:var(--green); background:var(--green-light); }
+.reel-drop-zone.has-photos { border-style:solid; padding:1rem; }
+.drop-icon { font-size:32px; margin-bottom:10px; }
+.drop-label { font-size:14px; color:var(--text-2); margin-bottom:4px; }
+.drop-sub { font-size:12px; color:var(--text-3); }
+
+/* Photo grid */
+.reel-photo-grid {
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(80px,1fr));
+  gap:8px; margin-top:8px;
+}
+.reel-thumb {
+  aspect-ratio:1; border-radius:6px; overflow:hidden; position:relative; cursor:grab;
+  border:1.5px solid transparent; transition:border-color .15s;
+}
+.reel-thumb:hover { border-color:var(--green); }
+.reel-thumb.dragging-thumb { opacity:0.4; }
+.reel-thumb img { width:100%; height:100%; object-fit:cover; pointer-events:none; }
+.reel-thumb .remove-thumb {
+  position:absolute; top:2px; right:2px; width:18px; height:18px;
+  background:rgba(0,0,0,0.6); color:white; border:none; border-radius:50%;
+  font-size:10px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  opacity:0; transition:opacity .15s;
+}
+.reel-thumb:hover .remove-thumb { opacity:1; }
+.reel-order-badge {
+  position:absolute; bottom:2px; left:2px;
+  background:rgba(0,0,0,0.55); color:white;
+  font-size:9px; font-weight:600; padding:1px 5px; border-radius:3px;
+}
+
+/* Vibe selector */
+.vibe-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:6px; }
+.vibe-btn {
+  padding:10px 6px; border:0.5px solid var(--border); border-radius:var(--radius);
+  background:var(--bg-2); cursor:pointer; text-align:center; transition:all .15s;
+}
+.vibe-btn:hover { border-color:var(--green); }
+.vibe-btn.selected { background:var(--green-light); border-color:var(--green); }
+.vibe-icon { font-size:20px; display:block; margin-bottom:4px; }
+.vibe-name { font-size:11px; font-weight:500; color:var(--text-2); }
+.vibe-btn.selected .vibe-name { color:var(--green); }
+
+/* Caption source */
+.caption-source { display:flex; gap:6px; margin-top:6px; }
+.cap-btn {
+  flex:1; padding:8px; border:0.5px solid var(--border); border-radius:var(--radius);
+  background:var(--bg-2); cursor:pointer; font-size:11px; font-weight:500;
+  color:var(--text-2); transition:all .15s; text-align:center;
+}
+.cap-btn:hover { border-color:var(--green); }
+.cap-btn.selected { background:var(--green-light); border-color:var(--green); color:var(--green); }
+
+/* Preview canvas area */
+.reel-preview-wrap {
+  display:flex; flex-direction:column; align-items:center; gap:1rem;
+  position:sticky; top:1.5rem;
+}
+.reel-canvas-frame {
+  width:200px; height:356px; border-radius:12px; overflow:hidden;
+  border:0.5px solid var(--border); background:#000;
+  box-shadow:0 8px 32px rgba(0,0,0,0.2);
+  position:relative;
+}
+.reel-canvas-frame canvas { width:100%; height:100%; display:block; }
+.preview-empty {
+  width:100%; height:100%; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; color:rgba(255,255,255,0.3);
+  font-size:12px; gap:8px;
+}
+
+/* Progress bar */
+.render-progress {
+  display:none; width:200px;
+}
+.render-bar-track { height:4px; background:var(--border); border-radius:2px; overflow:hidden; }
+.render-bar-fill { height:100%; background:var(--green); border-radius:2px; transition:width .1s; width:0%; }
+.render-label { font-size:11px; color:var(--text-3); text-align:center; margin-top:4px; }
+
+/* Create button */
+.create-reel-btn {
+  width:100%; padding:16px; background:var(--green); color:white;
+  border:none; border-radius:var(--radius); font-family:var(--font-serif);
+  font-size:17px; cursor:pointer; transition:background .15s;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.create-reel-btn:hover:not(:disabled) { background:var(--green-mid); }
+.create-reel-btn:disabled { opacity:0.5; cursor:default; }
+.download-btn {
+  display:none; width:100%; padding:13px; background:var(--bg-2);
+  border:0.5px solid var(--green); border-radius:var(--radius);
+  color:var(--green); font-family:var(--font-body); font-size:14px;
+  font-weight:500; cursor:pointer; transition:all .15s;
+  text-align:center;
+}
+.download-btn:hover { background:var(--green-light); }
+
+/* Platform badges */
+.platform-badges { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; }
+.plat-badge {
+  padding:4px 10px; border-radius:20px; font-size:10px; font-weight:600;
+  color:white; letter-spacing:.03em;
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <div class="logo"><svg viewBox="0 0 20 20" fill="none" width="22" height="22"><path d="M10 2C10 2 4 8 4 12a6 6 0 0012 0c0-4-6-10-6-10z" fill="white" opacity=".95"/><path d="M10 8c0 0-2 3-2 5a2 2 0 004 0c0-2-2-5-2-5z" fill="white" opacity=".45"/></svg></div>
+    <span class="wordmark">Stoke</span>
+    <span class="version-badge">v8</span>
+    <span class="tagline" style="margin-left:auto;display:flex;gap:8px;align-items:center">
+      <a href="index.html" style="font-size:12px;color:var(--green);text-decoration:none;font-weight:500">&#8592; Generator</a>
+      <a href="schedule.html" style="font-size:12px;color:var(--text-3);text-decoration:none;padding:4px 10px;border:0.5px solid var(--border);border-radius:20px">&#128197; Schedule</a>
+      <span id="auth-indicator" style="display:none;font-size:11px;color:var(--green);background:var(--green-light);padding:3px 10px;border-radius:20px;border:0.5px solid var(--green)"></span>
+    </span>
+  </div>
+
+  <!-- Page header -->
+  <div style="margin-bottom:1.5rem">
+    <div style="font-family:var(--font-serif);font-size:24px;color:var(--text);margin-bottom:4px">Reel Maker &#127916;</div>
+    <div style="font-size:13px;color:var(--text-3)">Drop your photos. Pick a vibe. Download a reel ready for TikTok, Instagram, and YouTube Shorts.</div>
+  </div>
+
+  <div class="reel-layout">
+
+    <!-- ── LEFT: Controls ─────────────────────────── -->
+    <div>
+
+      <!-- Step 1: Photos -->
+      <div style="margin-bottom:1.5rem">
+        <div class="field-label" style="margin-bottom:8px">1 &nbsp;&#8594;&nbsp; Add your photos <span style="color:var(--text-3);font-weight:400">(2–8 photos)</span></div>
+        <div class="reel-drop-zone" id="reel-drop-zone" onclick="document.getElementById('reel-file-input').click()">
+          <input type="file" id="reel-file-input" accept="image/*" multiple style="display:none" onchange="handleReelPhotos(this)">
+          <div id="drop-zone-inner">
+            <div class="drop-icon">&#128247;</div>
+            <div class="drop-label">Tap to add photos, or drag and drop</div>
+            <div class="drop-sub">JPG, PNG, HEIC — up to 8 photos</div>
+          </div>
+          <div class="reel-photo-grid" id="reel-photo-grid" style="display:none"></div>
+        </div>
+        <div id="photo-hint" style="display:none;margin-top:8px;font-size:11px;color:var(--text-3)">&#8593; Drag photos to reorder them — first photo shows longest</div>
+      </div>
+
+      <!-- Step 2: Vibe -->
+      <div style="margin-bottom:1.5rem">
+        <div class="field-label" style="margin-bottom:8px">2 &nbsp;&#8594;&nbsp; Pick a vibe</div>
+        <div class="vibe-grid">
+          <button class="vibe-btn selected" data-vibe="energy" onclick="selectVibe(this)">
+            <span class="vibe-icon">&#9889;</span>
+            <span class="vibe-name">Energy</span>
+          </button>
+          <button class="vibe-btn" data-vibe="showcase" onclick="selectVibe(this)">
+            <span class="vibe-icon">&#10024;</span>
+            <span class="vibe-name">Showcase</span>
+          </button>
+          <button class="vibe-btn" data-vibe="story" onclick="selectVibe(this)">
+            <span class="vibe-icon">&#128172;</span>
+            <span class="vibe-name">Story</span>
+          </button>
+        </div>
+        <div style="margin-top:6px;font-size:11px;color:var(--text-3)" id="vibe-desc">Fast cuts, bold motion — ideal for action shots and launches.</div>
+      </div>
+
+      <!-- Step 3: Caption -->
+      <div style="margin-bottom:1.5rem">
+        <div class="field-label" style="margin-bottom:8px">3 &nbsp;&#8594;&nbsp; Caption <span style="color:var(--text-3);font-weight:400">(optional)</span></div>
+        <div class="caption-source" id="caption-source" style="margin-bottom:8px">
+          <button class="cap-btn selected" data-src="custom" onclick="selectCapSrc(this)">Write my own</button>
+          <button class="cap-btn" data-src="history" onclick="selectCapSrc(this)">From last campaign</button>
+          <button class="cap-btn" data-src="ai" onclick="selectCapSrc(this)">AI write it</button>
+        </div>
+        <textarea id="reel-caption" rows="3" placeholder="Add a caption for your reel... (appears as overlay text)" style="width:100%;font-size:13px;line-height:1.65;font-family:var(--font-body);border:0.5px solid var(--border-2);border-radius:var(--radius);background:var(--bg);color:var(--text);padding:10px 12px;resize:vertical;outline:none" oninput="updatePreview()"></textarea>
+        <div style="margin-top:6px;font-size:11px;color:var(--text-3)">Hashtags from your settings will be added automatically.</div>
+      </div>
+
+      <!-- Step 4: Duration -->
+      <div style="margin-bottom:2rem">
+        <div class="field-label" style="margin-bottom:8px">4 &nbsp;&#8594;&nbsp; Length</div>
+        <div style="display:flex;gap:8px">
+          <button class="cap-btn selected" data-dur="15" onclick="selectDuration(this)">15 sec</button>
+          <button class="cap-btn" data-dur="30" onclick="selectDuration(this)">30 sec</button>
+          <button class="cap-btn" data-dur="60" onclick="selectDuration(this)">60 sec</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── RIGHT: Preview + Create ────────────────── -->
+    <div class="reel-preview-wrap">
+
+      <!-- Phone frame preview -->
+      <div class="reel-canvas-frame">
+        <canvas id="reel-preview-canvas" width="1080" height="1920"></canvas>
+        <div class="preview-empty" id="preview-empty">
+          <div style="font-size:28px">&#127916;</div>
+          <div>Preview appears here</div>
+        </div>
+      </div>
+
+      <!-- Platform labels -->
+      <div class="platform-badges">
+        <div class="plat-badge" style="background:#010101">TikTok</div>
+        <div class="plat-badge" style="background:#E1306C">Reels</div>
+        <div class="plat-badge" style="background:#FF0000">Shorts</div>
+      </div>
+
+      <!-- Progress -->
+      <div class="render-progress" id="render-progress">
+        <div class="render-bar-track"><div class="render-bar-fill" id="render-bar"></div></div>
+        <div class="render-label" id="render-label">Preparing...</div>
+      </div>
+
+      <!-- Create button -->
+      <button class="create-reel-btn" id="create-btn" onclick="createReel()">
+        <span>&#127916;</span> Create Reel
+      </button>
+
+      <!-- Download button -->
+      <button class="download-btn" id="download-btn" onclick="downloadReel()">
+        &#8595; Download MP4
+      </button>
+
+      <div style="font-size:10px;color:var(--text-3);text-align:center;line-height:1.6">
+        9:16 vertical &bull; 1080&times;1920 &bull; H.264 MP4<br>
+        Ready to upload directly
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ─────────────────────────────────────────────────────
+let reelPhotos  = [];   // {dataUrl, name}
+let selectedVibe = 'energy';
+let selectedDuration = 15;
+let captionSrc = 'custom';
+let renderedBlob = null;
+let previewAnimFrame = null;
+let previewPhotoIdx = 0;
+let previewStartTime = null;
+
+const VIBE_DESCS = {
+  energy: 'Fast cuts, bold motion — ideal for action shots and launches.',
+  showcase: 'Slow elegant pan — lets products and builds breathe and shine.',
+  story: 'Gentle drift with text focus — perfect for customer moments.',
+};
+
+// ── AUTH ──────────────────────────────────────────────────────
+(async function init() {
+  try {
+    const me = await fetch('/auth/me').then(r => r.json());
+    if (me.authenticated) {
+      const el = document.getElementById('auth-indicator');
+      if (el) { el.textContent = me.user?.name; el.style.display = 'inline-flex'; }
+    }
+  } catch(e) {}
+  drawEmptyPreview();
+})();
+
+// ── PHOTOS ────────────────────────────────────────────────────
+function handleReelPhotos(input) {
+  const remaining = 8 - reelPhotos.length;
+  const files = Array.from(input.files).slice(0, remaining);
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        // Resize to max 1080px wide
+        const canvas = document.createElement('canvas');
+        const maxW = 1080;
+        let w = img.width, h = img.height;
+        if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        reelPhotos.push({ dataUrl: canvas.toDataURL('image/jpeg', 0.85), name: file.name });
+        renderPhotoGrid();
+        updatePreview();
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  input.value = '';
+}
+
+function renderPhotoGrid() {
+  const zone = document.getElementById('reel-drop-zone');
+  const grid = document.getElementById('reel-photo-grid');
+  const inner = document.getElementById('drop-zone-inner');
+  const hint = document.getElementById('photo-hint');
+
+  if (reelPhotos.length > 0) {
+    zone.classList.add('has-photos');
+    inner.style.display = 'none';
+    grid.style.display = 'grid';
+    hint.style.display = 'block';
+    grid.innerHTML = reelPhotos.map((p, i) => `
+      <div class="reel-thumb" draggable="true" data-idx="${i}"
+        ondragstart="thumbDragStart(event,${i})"
+        ondragover="thumbDragOver(event,${i})"
+        ondrop="thumbDrop(event,${i})"
+        ondragend="thumbDragEnd()">
+        <img src="${p.dataUrl}" alt="Photo ${i+1}">
+        <div class="reel-order-badge">${i+1}</div>
+        <button class="remove-thumb" onclick="removeReelPhoto(${i},event)">&#x2715;</button>
+      </div>
+    `).join('');
+  } else {
+    zone.classList.remove('has-photos');
+    inner.style.display = 'block';
+    grid.style.display = 'none';
+    hint.style.display = 'none';
+    drawEmptyPreview();
+  }
+}
+
+function removeReelPhoto(i, e) {
+  e.stopPropagation();
+  reelPhotos.splice(i, 1);
+  renderPhotoGrid();
+  updatePreview();
+}
+
+// Drag to reorder
+let dragThumbIdx = null;
+function thumbDragStart(e, i) { dragThumbIdx = i; setTimeout(() => e.target.classList.add('dragging-thumb'), 0); e.dataTransfer.effectAllowed = 'move'; }
+function thumbDragOver(e, i) { e.preventDefault(); }
+function thumbDrop(e, i) {
+  e.preventDefault();
+  if (dragThumbIdx === null || dragThumbIdx === i) return;
+  const moved = reelPhotos.splice(dragThumbIdx, 1)[0];
+  reelPhotos.splice(i, 0, moved);
+  renderPhotoGrid(); updatePreview();
+}
+function thumbDragEnd() {
+  dragThumbIdx = null;
+  document.querySelectorAll('.reel-thumb').forEach(t => t.classList.remove('dragging-thumb'));
+}
+
+// Drop zone drag-and-drop from desktop
+const dz = document.getElementById('reel-drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', e => { if (!dz.contains(e.relatedTarget)) dz.classList.remove('drag-over'); });
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('drag-over');
+  if (e.dataTransfer.files.length > 0) {
+    const fakeInput = { files: e.dataTransfer.files, value: '' };
+    handleReelPhotos(fakeInput);
+  }
+});
+
+// ── CONTROLS ──────────────────────────────────────────────────
+function selectVibe(btn) {
+  document.querySelectorAll('.vibe-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedVibe = btn.dataset.vibe;
+  document.getElementById('vibe-desc').textContent = VIBE_DESCS[selectedVibe];
+  updatePreview();
+}
+
+function selectDuration(btn) {
+  document.querySelectorAll('[data-dur]').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedDuration = parseInt(btn.dataset.dur);
+}
+
+function selectCapSrc(btn) {
+  document.querySelectorAll('.cap-btn[data-src]').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  captionSrc = btn.dataset.src;
+
+  if (captionSrc === 'history') loadCaptionFromHistory();
+  if (captionSrc === 'ai') generateAICaption();
+}
+
+function loadCaptionFromHistory() {
+  try {
+    const history = JSON.parse(localStorage.getItem('stoke_history') || '[]');
+    const latest = history[0];
+    if (latest) {
+      const posts = latest.campaign?.flatMap(d => d.posts || []) || [];
+      const insta = posts.find(p => p.channel === 'INSTAGRAM') || posts[0];
+      if (insta) {
+        document.getElementById('reel-caption').value = insta.text.split('\n')[0].substring(0, 150);
+        updatePreview();
+        return;
+      }
+    }
+    document.getElementById('reel-caption').value = '';
+    document.getElementById('reel-caption').placeholder = 'No recent campaigns found — write your own caption.';
+  } catch(e) {}
+}
+
+async function generateAICaption() {
+  const capArea = document.getElementById('reel-caption');
+  capArea.value = '';
+  capArea.placeholder = 'Writing your caption...';
+
+  let settings = {};
+  try { settings = JSON.parse(localStorage.getItem('stoke_settings') || '{}'); } catch(e) {}
+
+  const prompt = `Write a punchy, engaging ${selectedVibe === 'story' ? 'story-driven' : selectedVibe === 'energy' ? 'high-energy' : 'showcase'} caption for a social media reel for ${settings.business?.name || 'a kayak and sailboat shop'} on the Crystal Coast. 2-3 sentences max. No hashtags — just the caption text. No emoji unless it really fits.`;
+
+  try {
+    const resp = await fetch('/functions/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: [{ role: 'user', content: [{ type: 'text', text: prompt }] }] })
+    });
+    const data = await resp.json();
+    const text = data.content?.[0]?.text?.trim() || '';
+    capArea.value = text;
+    capArea.placeholder = '';
+    updatePreview();
+  } catch(e) {
+    capArea.placeholder = 'Could not generate caption. Write your own above.';
+  }
+}
+
+// ── LIVE PREVIEW ──────────────────────────────────────────────
+function updatePreview() {
+  cancelAnimationFrame(previewAnimFrame);
+  const canvas = document.getElementById('reel-preview-canvas');
+  const empty  = document.getElementById('preview-empty');
+
+  if (reelPhotos.length === 0) { drawEmptyPreview(); return; }
+
+  empty.style.display = 'none';
+  canvas.style.display = 'block';
+
+  // Animate preview
+  previewStartTime = null;
+  const secondsPerPhoto = Math.max(2, selectedDuration / reelPhotos.length);
+  const caption = document.getElementById('reel-caption').value.trim();
+
+  const imgs = [];
+  let loaded = 0;
+  reelPhotos.forEach((p, i) => {
+    const img = new Image();
+    img.onload = () => { imgs[i] = img; loaded++; if (loaded === reelPhotos.length) animatePreview(canvas, imgs, caption, secondsPerPhoto); };
+    img.src = p.dataUrl;
+  });
+}
+
+function animatePreview(canvas, imgs, caption, spp) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  function frame(ts) {
+    if (!previewStartTime) previewStartTime = ts;
+    const elapsed = (ts - previewStartTime) / 1000;
+    const totalTime = spp * imgs.length;
+    const loopElapsed = elapsed % totalTime;
+    const photoIdx = Math.floor(loopElapsed / spp);
+    const photoProgress = (loopElapsed % spp) / spp; // 0..1
+
+    const img = imgs[photoIdx];
+    if (!img) { previewAnimFrame = requestAnimationFrame(frame); return; }
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Ken Burns based on vibe
+    let scale = 1, tx = 0, ty = 0;
+    if (selectedVibe === 'energy') {
+      // Fast zoom in
+      scale = 1 + photoProgress * 0.12;
+      tx = (photoIdx % 2 === 0) ? photoProgress * 20 : -photoProgress * 20;
+    } else if (selectedVibe === 'showcase') {
+      // Slow elegant pan right
+      scale = 1.08 - photoProgress * 0.04;
+      tx = -30 + photoProgress * 60;
+    } else {
+      // Gentle drift up
+      scale = 1.05;
+      ty = photoProgress * -30;
+    }
+
+    // Draw photo — cover fill with Ken Burns transform
+    drawCoverPhoto(ctx, img, W, H, scale, tx, ty);
+
+    // Dark gradient overlay at bottom for text
+    if (caption) {
+      const grad = ctx.createLinearGradient(0, H * 0.55, 0, H);
+      grad.addColorStop(0, 'rgba(0,0,0,0)');
+      grad.addColorStop(1, 'rgba(0,0,0,0.75)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, H * 0.55, W, H * 0.45);
+    }
+
+    // Top gradient (subtle)
+    const topGrad = ctx.createLinearGradient(0, 0, 0, 150);
+    topGrad.addColorStop(0, 'rgba(0,0,0,0.3)');
+    topGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = topGrad;
+    ctx.fillRect(0, 0, W, 150);
+
+    // Caption text
+    if (caption) {
+      const opacity = Math.min(1, photoProgress * 5);
+      ctx.globalAlpha = opacity;
+      ctx.fillStyle = 'white';
+      ctx.font = `500 ${selectedVibe === 'energy' ? 68 : 60}px "DM Serif Display", Georgia, serif`;
+      ctx.textAlign = 'left';
+      ctx.shadowColor = 'rgba(0,0,0,0.6)';
+      ctx.shadowBlur = 20;
+      wrapText(ctx, caption, 70, H - 220, W - 140, 80);
+      ctx.globalAlpha = 1;
+      ctx.shadowBlur = 0;
+    }
+
+    // Progress dots
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    imgs.forEach((_, di) => {
+      const dotX = W/2 + (di - (imgs.length-1)/2) * 22;
+      ctx.beginPath();
+      ctx.arc(dotX, H - 80, di === photoIdx ? 6 : 4, 0, Math.PI*2);
+      ctx.fillStyle = di === photoIdx ? 'white' : 'rgba(255,255,255,0.4)';
+      ctx.fill();
+    });
+
+    previewAnimFrame = requestAnimationFrame(frame);
+  }
+
+  cancelAnimationFrame(previewAnimFrame);
+  previewAnimFrame = requestAnimationFrame(frame);
+}
+
+function drawCoverPhoto(ctx, img, W, H, scale, tx, ty) {
+  const imgAspect = img.naturalWidth / img.naturalHeight;
+  const frameAspect = W / H;
+  let drawW, drawH, drawX, drawY;
+
+  if (imgAspect > frameAspect) {
+    drawH = H * scale;
+    drawW = drawH * imgAspect;
+  } else {
+    drawW = W * scale;
+    drawH = drawW / imgAspect;
+  }
+
+  drawX = (W - drawW) / 2 + tx;
+  drawY = (H - drawH) / 2 + ty;
+  ctx.drawImage(img, drawX, drawY, drawW, drawH);
+}
+
+function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+  const words = text.split(' ');
+  let line = '';
+  const lines = [];
+  for (const word of words) {
+    const test = line + (line ? ' ' : '') + word;
+    if (ctx.measureText(test).width > maxWidth && line) { lines.push(line); line = word; }
+    else line = test;
+  }
+  if (line) lines.push(line);
+  const totalH = lines.length * lineHeight;
+  lines.forEach((l, i) => ctx.fillText(l, x, y - totalH + (i+1) * lineHeight));
+}
+
+function drawEmptyPreview() {
+  const canvas = document.getElementById('reel-preview-canvas');
+  const empty = document.getElementById('preview-empty');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  canvas.style.display = 'none';
+  empty.style.display = 'flex';
+}
+
+// ── CREATE REEL (MediaRecorder) ────────────────────────────────
+async function createReel() {
+  if (reelPhotos.length === 0) { alert('Add at least 2 photos to create a reel.'); return; }
+
+  const btn = document.getElementById('create-btn');
+  const progress = document.getElementById('render-progress');
+  const bar = document.getElementById('render-bar');
+  const label = document.getElementById('render-label');
+  const dlBtn = document.getElementById('download-btn');
+
+  btn.disabled = true;
+  btn.innerHTML = '<span>&#9881;</span> Rendering...';
+  progress.style.display = 'block';
+  dlBtn.style.display = 'none';
+  renderedBlob = null;
+
+  // Load all images
+  label.textContent = 'Loading photos...';
+  bar.style.width = '5%';
+
+  const imgs = await Promise.all(reelPhotos.map(p => new Promise(res => {
+    const img = new Image();
+    img.onload = () => res(img);
+    img.src = p.dataUrl;
+  })));
+
+  label.textContent = 'Setting up renderer...';
+  bar.style.width = '10%';
+
+  // Offscreen canvas at full 1080x1920
+  const W = 1080, H = 1920;
+  const offCanvas = document.createElement('canvas');
+  offCanvas.width = W; offCanvas.height = H;
+  const ctx = offCanvas.getContext('2d');
+
+  const caption = document.getElementById('reel-caption').value.trim();
+  const spp = Math.max(2, selectedDuration / imgs.length); // seconds per photo
+  const fps = 30;
+  const totalFrames = Math.round(selectedDuration * fps);
+
+  // Get settings for hashtags
+  let hashtags = [];
+  try {
+    const s = JSON.parse(localStorage.getItem('stoke_settings') || '{}');
+    hashtags = s.hashtags || [];
+  } catch(e) {}
+
+  // Set up MediaRecorder
+  let stream;
+  try {
+    stream = offCanvas.captureStream(fps);
+  } catch(e) {
+    alert('Your browser does not support video recording. Please use Chrome.');
+    btn.disabled = false; btn.innerHTML = '<span>&#127916;</span> Create Reel';
+    progress.style.display = 'none';
+    return;
+  }
+
+  const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+    ? 'video/webm;codecs=vp9'
+    : MediaRecorder.isTypeSupported('video/webm')
+    ? 'video/webm'
+    : 'video/mp4';
+
+  const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8000000 });
+  const chunks = [];
+  recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+
+  recorder.onstop = () => {
+    renderedBlob = new Blob(chunks, { type: mimeType });
+    bar.style.width = '100%';
+    label.textContent = 'Done!';
+    btn.disabled = false;
+    btn.innerHTML = '<span>&#127916;</span> Create Reel';
+    dlBtn.style.display = 'block';
+    dlBtn.textContent = `\u2193 Download ${mimeType.includes('mp4') ? 'MP4' : 'WebM'} (${(renderedBlob.size / 1024 / 1024).toFixed(1)} MB)`;
+    setTimeout(() => { progress.style.display = 'none'; }, 1000);
+  };
+
+  recorder.start();
+
+  // Render frames
+  let frameIdx = 0;
+
+  function renderNextFrame() {
+    if (frameIdx >= totalFrames) {
+      recorder.stop();
+      return;
+    }
+
+    const elapsed = frameIdx / fps;
+    const photoIdx = Math.min(Math.floor(elapsed / spp), imgs.length - 1);
+    const photoProgress = Math.min(1, (elapsed % spp) / spp);
+    const img = imgs[photoIdx];
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Ken Burns
+    let scale = 1, tx = 0, ty = 0;
+    if (selectedVibe === 'energy') {
+      scale = 1 + photoProgress * 0.08;
+      tx = (photoIdx % 2 === 0) ? photoProgress * 40 : -photoProgress * 40;
+    } else if (selectedVibe === 'showcase') {
+      scale = 1.1 - photoProgress * 0.05;
+      tx = -60 + photoProgress * 120;
+    } else {
+      scale = 1.06;
+      ty = photoProgress * -60;
+    }
+
+    // Photo crossfade
+    const fadeDuration = 0.3; // seconds
+    const timeInPhoto = elapsed - photoIdx * spp;
+    const fadeIn = Math.min(1, timeInPhoto / fadeDuration);
+    const fadeOut = photoIdx < imgs.length - 1 ? Math.max(0, 1 - (spp - timeInPhoto) / fadeDuration) : 0;
+    const alpha = Math.min(1, fadeIn) * (1 - fadeOut) + (fadeOut > 0 ? fadeOut : 0);
+
+    ctx.globalAlpha = 1;
+    if (photoIdx > 0) {
+      // Previous photo fading out
+      const prevImg = imgs[photoIdx - 1];
+      drawCoverPhoto(ctx, prevImg, W, H, 1.06, 0, 0);
+    }
+    ctx.globalAlpha = alpha;
+    drawCoverPhoto(ctx, img, W, H, scale, tx, ty);
+    ctx.globalAlpha = 1;
+
+    // Bottom gradient
+    if (caption || hashtags.length > 0) {
+      const grad = ctx.createLinearGradient(0, H * 0.5, 0, H);
+      grad.addColorStop(0, 'rgba(0,0,0,0)');
+      grad.addColorStop(1, 'rgba(0,0,0,0.8)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, H * 0.5, W, H * 0.5);
+    }
+
+    // Top gradient
+    const topGrad = ctx.createLinearGradient(0, 0, 0, 200);
+    topGrad.addColorStop(0, 'rgba(0,0,0,0.35)');
+    topGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = topGrad;
+    ctx.fillRect(0, 0, W, 200);
+
+    // Caption
+    if (caption) {
+      const textFade = Math.min(1, timeInPhoto * 3);
+      ctx.globalAlpha = textFade;
+      ctx.fillStyle = 'white';
+      ctx.font = `500 ${selectedVibe === 'energy' ? 72 : 64}px "DM Serif Display", Georgia, serif`;
+      ctx.textAlign = 'left';
+      ctx.shadowColor = 'rgba(0,0,0,0.7)';
+      ctx.shadowBlur = 30;
+      wrapText(ctx, caption, 80, H - 320, W - 160, 88);
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+    }
+
+    // Hashtags at end (last 4 seconds)
+    if (hashtags.length > 0 && elapsed > selectedDuration - 4) {
+      const htFade = Math.min(1, (elapsed - (selectedDuration - 4)) * 2);
+      ctx.globalAlpha = htFade * 0.7;
+      ctx.fillStyle = 'white';
+      ctx.font = `400 36px "DM Sans", sans-serif`;
+      ctx.textAlign = 'left';
+      ctx.fillText(hashtags.slice(0, 5).join(' '), 80, H - 120);
+      ctx.globalAlpha = 1;
+    }
+
+    // Progress dots
+    imgs.forEach((_, di) => {
+      const dotX = W/2 + (di - (imgs.length-1)/2) * 30;
+      ctx.beginPath();
+      ctx.arc(dotX, H - 100, di === photoIdx ? 10 : 7, 0, Math.PI*2);
+      ctx.fillStyle = di === photoIdx ? 'white' : 'rgba(255,255,255,0.4)';
+      ctx.fill();
+    });
+
+    frameIdx++;
+    const pct = 10 + Math.round((frameIdx / totalFrames) * 85);
+    bar.style.width = pct + '%';
+    label.textContent = `Rendering... ${Math.round((frameIdx / totalFrames) * 100)}%`;
+
+    // Use requestAnimationFrame to avoid blocking
+    requestAnimationFrame(renderNextFrame);
+  }
+
+  renderNextFrame();
+}
+
+function downloadReel() {
+  if (!renderedBlob) return;
+  const ext = renderedBlob.type.includes('mp4') ? 'mp4' : 'webm';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(renderedBlob);
+  a.download = `stoke-reel-${new Date().toISOString().slice(0,10)}.${ext}`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+</script>
+</body>
+</html>
