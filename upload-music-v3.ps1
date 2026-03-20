@@ -1,6 +1,10 @@
-# upload-music.ps1 v2
-# Run from C:\Users\andre\stoke
-# Fixed: correct wrangler r2 object put syntax
+# upload-music-v3.ps1
+# Correct wrangler syntax for R2 uploads to remote bucket
+
+Set-Location "C:\Users\andre\stoke"
+
+$bucket = "stoke-photos"
+$downloads = "C:\Users\andre\Downloads"
 
 $tracks = @(
     @{ file = "aberrantrealities-organic-flow-1015-remastered-485950.mp3"; key = "music/organic-flow.mp3" },
@@ -14,15 +18,24 @@ $tracks = @(
 )
 
 foreach ($t in $tracks) {
-    $src = "C:\Users\andre\Downloads\$($t.file)"
+    $src = Join-Path $downloads $t.file
+    $r2path = "$bucket/$($t.key)"
+
     if (Test-Path $src) {
         Write-Host "Uploading $($t.key)..." -ForegroundColor Cyan
-        # Correct syntax: bucket/key as one argument, file as separate flag
-        npx wrangler r2 object put "stoke-photos/$($t.key)" --file="$src" --content-type="audio/mpeg" --remote
-        Write-Host "Done: $($t.key)" -ForegroundColor Green
+        # Note: no --remote flag, wrangler reads from wrangler.toml which has the binding
+        # Use the full object path: bucket/key
+        $result = & npx wrangler r2 object put $r2path --file=$src --content-type="audio/mpeg" 2>&1
+        Write-Host $result
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "OK: $($t.key)" -ForegroundColor Green
+        } else {
+            Write-Host "FAILED: $($t.key)" -ForegroundColor Red
+        }
     } else {
         Write-Host "NOT FOUND: $src" -ForegroundColor Red
     }
 }
 
-Write-Host "`nAll uploads complete!" -ForegroundColor Green
+Write-Host "`nDone! Verify with:" -ForegroundColor Yellow
+Write-Host "npx wrangler r2 object get stoke-photos/music/organic-flow.mp3 --file=test.mp3" -ForegroundColor Yellow

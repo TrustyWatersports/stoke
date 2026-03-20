@@ -13,6 +13,22 @@
 .reel-layout { display:grid; grid-template-columns:1fr 360px; gap:2rem; align-items:start; }
 @media(max-width:800px){ .reel-layout { grid-template-columns:1fr; } }
 
+/* Mode toggle */
+.mode-toggle { display:flex; gap:0; margin-bottom:1.5rem; border:0.5px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+.mode-btn { flex:1; padding:12px; border:none; background:var(--bg-2); color:var(--text-2); font-family:var(--font-body); font-size:13px; font-weight:500; cursor:pointer; transition:all .15s; display:flex; align-items:center; justify-content:center; gap:6px; }
+.mode-btn:first-child { border-right:0.5px solid var(--border); }
+.mode-btn.active { background:var(--green); color:white; }
+.mode-btn:not(.active):hover { background:var(--green-light); color:var(--green); }
+
+/* Video drop zone */
+.video-drop-zone { border:1.5px dashed var(--border-2); border-radius:var(--radius); padding:2.5rem 1.5rem; text-align:center; cursor:pointer; transition:all .2s; background:var(--bg-2); position:relative; }
+.video-drop-zone.drag-over,.video-drop-zone:hover { border-color:var(--green); background:var(--green-light); }
+.video-drop-zone.has-video { border-style:solid; border-color:var(--green); padding:1rem; }
+.video-preview-wrap { position:relative; border-radius:8px; overflow:hidden; background:#000; }
+.video-preview-wrap video { width:100%; max-height:280px; display:block; object-fit:contain; }
+.video-remove-btn { position:absolute; top:6px; right:6px; width:24px; height:24px; background:rgba(0,0,0,0.65); color:white; border:none; border-radius:50%; font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.video-meta { font-size:11px; color:var(--green); margin-top:8px; font-weight:500; }
+
 /* Photo drop zone */
 .reel-drop-zone {
   border:1.5px dashed var(--border-2);
@@ -190,16 +206,22 @@ input[type=range].vol-slider {
   <!-- Page header -->
   <div style="margin-bottom:1.5rem">
     <div style="font-family:var(--font-serif);font-size:24px;color:var(--text);margin-bottom:4px">Reel Maker &#127916;</div>
-    <div style="font-size:13px;color:var(--text-3)">Drop your photos. Pick a vibe. Download a reel ready for TikTok, Instagram, and YouTube Shorts.</div>
+    <div style="font-size:13px;color:var(--text-3)">Photos or video &#8594; add music &#8594; share to TikTok, Instagram &amp; YouTube Shorts.</div>
+  </div>
+
+  <!-- Mode toggle -->
+  <div class="mode-toggle">
+    <button class="mode-btn active" id="mode-photos" onclick="setMode('photos')">&#128247; Photos &#8594; Reel</button>
+    <button class="mode-btn" id="mode-video" onclick="setMode('video')">&#127910; Video &#8594; Reel</button>
   </div>
 
   <div class="reel-layout">
 
-    <!-- ── LEFT: Controls ─────────────────────────── -->
+    <!-- LEFT: Controls -->
     <div>
 
-      <!-- Step 1: Photos -->
-      <div style="margin-bottom:1.5rem">
+      <!-- Step 1: Photos (photo mode) -->
+      <div id="photos-step" style="margin-bottom:1.5rem">
         <div class="field-label" style="margin-bottom:8px">1 &nbsp;&#8594;&nbsp; Add your photos <span style="color:var(--text-3);font-weight:400">(2–8 photos)</span></div>
         <div class="reel-drop-zone" id="reel-drop-zone" onclick="document.getElementById('reel-file-input').click()">
           <input type="file" id="reel-file-input" accept="image/*" multiple style="display:none" onchange="handleReelPhotos(this)">
@@ -210,10 +232,32 @@ input[type=range].vol-slider {
           </div>
           <div class="reel-photo-grid" id="reel-photo-grid" style="display:none"></div>
         </div>
-        <div id="photo-hint" style="display:none;margin-top:8px;font-size:11px;color:var(--text-3)">&#8593; Drag photos to reorder them — first photo shows longest</div>
+        <div id="photo-hint" style="display:none;margin-top:8px;font-size:11px;color:var(--text-3)">&#8593; Drag photos to reorder them &#8212; first photo shows longest</div>
+      </div>
+      </div><!-- /photos-step -->
+
+      <!-- Step 1: Video (video mode) -->
+      <div id="video-step" style="display:none;margin-bottom:1.5rem">
+        <div class="field-label" style="margin-bottom:8px">1 &nbsp;&#8594;&nbsp; Add your video <span style="color:var(--text-3);font-weight:400">(MP4, MOV, up to 500MB)</span></div>
+        <div class="video-drop-zone" id="video-drop-zone" onclick="document.getElementById('video-file-input').click()">
+          <input type="file" id="video-file-input" accept="video/*" style="display:none" onchange="handleVideoUpload(this)">
+          <div id="video-drop-inner">
+            <div class="drop-icon">&#127910;</div>
+            <div class="drop-label">Tap to add a video, or drag and drop</div>
+            <div class="drop-sub">MP4, MOV, AVI &#8212; filmed vertically works best</div>
+          </div>
+          <div id="video-preview-container" style="display:none">
+            <div class="video-preview-wrap">
+              <video id="video-preview-el" controls playsinline muted></video>
+              <button class="video-remove-btn" onclick="removeVideo(event)">&#x2715;</button>
+            </div>
+            <div class="video-meta" id="video-meta"></div>
+          </div>
+        </div>
       </div>
 
-      <!-- Step 2: Vibe -->
+      <!-- Step 2: Vibe (photo mode only) -->
+      <div id="vibe-section">
       <div style="margin-bottom:1.5rem">
         <div class="field-label" style="margin-bottom:8px">2 &nbsp;&#8594;&nbsp; Pick a vibe</div>
         <div class="vibe-grid">
@@ -230,8 +274,9 @@ input[type=range].vol-slider {
             <span class="vibe-name">Story</span>
           </button>
         </div>
-        <div style="margin-top:6px;font-size:11px;color:var(--text-3)" id="vibe-desc">Fast cuts, bold motion — ideal for action shots and launches.</div>
+        <div style="margin-top:6px;font-size:11px;color:var(--text-3)" id="vibe-desc">Fast cuts, bold motion &#8212; ideal for action shots and launches.</div>
       </div>
+      </div><!-- /vibe-section -->
 
       <!-- Step 3: Caption -->
       <div style="margin-bottom:1.5rem">
@@ -296,13 +341,40 @@ input[type=range].vol-slider {
 
       <!-- Create button -->
       <button class="create-reel-btn" id="create-btn" onclick="createReel()">
-        <span>&#127916;</span> Create Reel
+        <span>&#127916;</span> <span id="create-btn-label">Create Reel</span>
       </button>
 
-      <!-- Download button -->
-      <button class="download-btn" id="download-btn" onclick="downloadReel()">
-        &#8595; Download MP4
-      </button>
+      <!-- Share / Publish panel -->
+      <div id="share-panel" style="display:none;width:100%">
+
+        <!-- Primary: Share button (Web Share API — triggers native share sheet) -->
+        <button class="create-reel-btn" id="share-btn" onclick="shareReel()" style="margin-bottom:8px;background:var(--green)">
+          &#8679; Share to TikTok / Instagram
+        </button>
+
+        <!-- Platform quick-open buttons -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
+          <button onclick="openPlatform('tiktok')" style="padding:8px 4px;border:0.5px solid var(--border);border-radius:var(--radius);background:var(--bg-2);cursor:pointer;font-size:10px;font-weight:600;color:var(--text-2);transition:all .15s" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border)'">
+            &#9654; TikTok
+          </button>
+          <button onclick="openPlatform('instagram')" style="padding:8px 4px;border:0.5px solid var(--border);border-radius:var(--radius);background:var(--bg-2);cursor:pointer;font-size:10px;font-weight:600;color:var(--text-2);transition:all .15s" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border)'">
+            &#9654; Instagram
+          </button>
+          <button onclick="openPlatform('youtube')" style="padding:8px 4px;border:0.5px solid var(--border);border-radius:var(--radius);background:var(--bg-2);cursor:pointer;font-size:10px;font-weight:600;color:var(--text-2);transition:all .15s" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border)'">
+            &#9654; YouTube
+          </button>
+        </div>
+
+        <!-- Save to device fallback -->
+        <button onclick="downloadReel()" style="width:100%;padding:10px;border:0.5px solid var(--border);border-radius:var(--radius);background:none;color:var(--text-3);font-family:var(--font-body);font-size:12px;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-3)'">
+          &#8595; Save to device
+        </button>
+
+        <div id="share-instructions" style="display:none;margin-top:10px;padding:10px 12px;background:var(--green-light);border:0.5px solid var(--green);border-radius:var(--radius);font-size:11px;color:var(--green);line-height:1.6">
+          <strong>On mobile:</strong> Tap &ldquo;Share to TikTok / Instagram&rdquo; above — your phone&rsquo;s share sheet will open and you can post directly.<br><br>
+          <strong>On desktop:</strong> Click a platform button to open it, then drag your saved reel file into the upload area.
+        </div>
+      </div>
 
       <div style="font-size:10px;color:var(--text-3);text-align:center;line-height:1.6">
         9:16 vertical &bull; 1080&times;1920 &bull; H.264 MP4<br>
@@ -856,10 +928,11 @@ async function createReel() {
     bar.style.width = '100%';
     label.textContent = 'Done!';
     btn.disabled = false;
-    btn.innerHTML = '<span>&#127916;</span> Create Reel';
-    dlBtn.style.display = 'block';
-    dlBtn.textContent = `\u2193 Download ${renderedBlob.type.includes('mp4') ? 'MP4' : 'WebM'} (${(renderedBlob.size / 1024 / 1024).toFixed(1)} MB)`;
-    setTimeout(() => { progress.style.display = 'none'; }, 1000);
+    btn.innerHTML = '<span>&#127916;</span> Create Another';
+    setTimeout(() => {
+      progress.style.display = 'none';
+      showSharePanel();
+    }, 800);
   };
 
   recorder.start();
@@ -1121,6 +1194,43 @@ function audioBufferToWav(buffer) {
   return new Blob([arrayBuffer], { type: 'audio/wav' });
 }
 
+// Show the share panel after render
+function showSharePanel() {
+  document.getElementById('share-panel').style.display = 'block';
+  // Show instructions on desktop, hide on mobile
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  document.getElementById('share-instructions').style.display = isMobile ? 'none' : 'block';
+  // Scroll share panel into view
+  document.getElementById('share-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// Primary share — Web Share API (triggers native iOS/Android share sheet)
+async function shareReel() {
+  if (!renderedBlob) return;
+  const ext = renderedBlob.type.includes('mp4') ? 'mp4' : 'webm';
+  const fileName = `stoke-reel-${new Date().toISOString().slice(0,10)}.${ext}`;
+  const file = new File([renderedBlob], fileName, { type: renderedBlob.type });
+
+  // Try Web Share API with file (works on iOS Safari, Android Chrome)
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({
+        files: [file],
+        title: 'My Stoke Reel',
+        text: document.getElementById('reel-caption')?.value?.trim() || 'Check this out!',
+      });
+      return;
+    } catch(e) {
+      if (e.name === 'AbortError') return; // user cancelled, no fallback needed
+      console.warn('[Share] Web Share failed:', e.message);
+    }
+  }
+
+  // Fallback: save to device
+  downloadReel();
+}
+
+// Save to device (classic download)
 function downloadReel() {
   if (!renderedBlob) return;
   const ext = renderedBlob.type.includes('mp4') ? 'mp4' : 'webm';
@@ -1129,6 +1239,180 @@ function downloadReel() {
   a.download = `stoke-reel-${new Date().toISOString().slice(0,10)}.${ext}`;
   a.click();
   URL.revokeObjectURL(a.href);
+}
+
+// MODE TOGGLE
+let currentMode = 'photos';
+let uploadedVideo = null;
+
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('mode-photos').classList.toggle('active', mode === 'photos');
+  document.getElementById('mode-video').classList.toggle('active', mode === 'video');
+  document.getElementById('photos-step').style.display = mode === 'photos' ? 'block' : 'none';
+  document.getElementById('video-step').style.display  = mode === 'video'  ? 'block' : 'none';
+  document.getElementById('vibe-section').style.display = mode === 'photos' ? 'block' : 'none';
+  document.getElementById('share-panel').style.display = 'none';
+  renderedBlob = null;
+  cancelAnimationFrame(previewAnimFrame);
+  drawEmptyPreview();
+  document.getElementById('create-btn-label').textContent =
+    mode === 'photos' ? 'Create Reel' : 'Add Music & Export';
+}
+
+// VIDEO UPLOAD
+function handleVideoUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 500 * 1024 * 1024) { alert('Video is larger than 500MB. Please trim it first.'); return; }
+  if (uploadedVideo) URL.revokeObjectURL(uploadedVideo.url);
+  const url = URL.createObjectURL(file);
+  const videoEl = document.getElementById('video-preview-el');
+  videoEl.src = url;
+  videoEl.onloadedmetadata = () => {
+    const dur = Math.round(videoEl.duration);
+    const mb  = (file.size / 1024 / 1024).toFixed(1);
+    document.getElementById('video-meta').textContent = `${dur}s \u00b7 ${mb} MB \u00b7 ${file.name}`;
+    uploadedVideo = { file, url, duration: videoEl.duration };
+    // Auto-set duration to match
+    document.querySelectorAll('[data-dur]').forEach(b => b.classList.remove('selected'));
+    if (dur <= 15) { document.querySelector('[data-dur="15"]')?.classList.add('selected'); selectedDuration = 15; }
+    else if (dur <= 30) { document.querySelector('[data-dur="30"]')?.classList.add('selected'); selectedDuration = 30; }
+    else { document.querySelector('[data-dur="60"]')?.classList.add('selected'); selectedDuration = 60; }
+  };
+  document.getElementById('video-drop-inner').style.display = 'none';
+  document.getElementById('video-preview-container').style.display = 'block';
+  document.getElementById('video-drop-zone').classList.add('has-video');
+  input.value = '';
+
+  // Drag and drop for video zone
+  const vdz = document.getElementById('video-drop-zone');
+  vdz.addEventListener('dragover', e => { e.preventDefault(); vdz.classList.add('drag-over'); });
+  vdz.addEventListener('dragleave', () => vdz.classList.remove('drag-over'));
+  vdz.addEventListener('drop', e => {
+    e.preventDefault(); vdz.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f && f.type.startsWith('video/')) handleVideoUpload({ files:[f], value:'' });
+  });
+}
+
+function removeVideo(e) {
+  e.stopPropagation();
+  if (uploadedVideo) { URL.revokeObjectURL(uploadedVideo.url); uploadedVideo = null; }
+  document.getElementById('video-preview-el').src = '';
+  document.getElementById('video-drop-inner').style.display = 'block';
+  document.getElementById('video-preview-container').style.display = 'none';
+  document.getElementById('video-drop-zone').classList.remove('has-video');
+  document.getElementById('video-meta').textContent = '';
+}
+
+// Intercept createReel to dispatch to video mode
+const _origCreateReel = createReel;
+createReel = async function() {
+  if (currentMode === 'video') { await createVideoReel(); return; }
+  await _origCreateReel();
+};
+
+// VIDEO REEL CREATION
+async function createVideoReel() {
+  if (!uploadedVideo) { alert('Please add a video first.'); return; }
+  const btn = document.getElementById('create-btn');
+  const progress = document.getElementById('render-progress');
+  const bar = document.getElementById('render-bar');
+  const label = document.getElementById('render-label');
+  btn.disabled = true;
+  btn.querySelector('#create-btn-label').textContent = 'Processing...';
+  progress.style.display = 'block';
+  renderedBlob = null;
+  label.textContent = 'Loading video...';
+  bar.style.width = '10%';
+  const caption = document.getElementById('reel-caption')?.value?.trim() || '';
+  let hashtags = [];
+  try { hashtags = JSON.parse(localStorage.getItem('stoke_settings') || '{}').hashtags || []; } catch(e) {}
+  const W = 1080, H = 1920;
+  const offCanvas = document.createElement('canvas');
+  offCanvas.width = W; offCanvas.height = H;
+  const ctx = offCanvas.getContext('2d');
+  const videoEl = document.createElement('video');
+  videoEl.src = uploadedVideo.url;
+  videoEl.muted = true; videoEl.playsInline = true;
+  await new Promise(r => { videoEl.oncanplay = r; videoEl.load(); });
+  bar.style.width = '20%'; label.textContent = 'Setting up export...';
+  const duration = Math.min(uploadedVideo.duration, selectedDuration);
+  const stream = offCanvas.captureStream(30);
+  const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm';
+  const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8000000 });
+  const chunks = [];
+  recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+  recorder.onstop = async () => {
+    const videoBlob = new Blob(chunks, { type: mimeType });
+    if (selectedTrack) {
+      label.textContent = 'Adding music...'; bar.style.width = '90%';
+      try { renderedBlob = await mixAudioIntoVideo(videoBlob, selectedTrack, duration); }
+      catch(e) { renderedBlob = videoBlob; }
+    } else { renderedBlob = videoBlob; }
+    bar.style.width = '100%'; label.textContent = 'Done!';
+    btn.disabled = false;
+    btn.querySelector('#create-btn-label').textContent = 'Export Again';
+    setTimeout(() => { progress.style.display = 'none'; showSharePanel(); }, 800);
+  };
+  recorder.start();
+  videoEl.currentTime = 0;
+  await videoEl.play();
+  function drawVideoFrame() {
+    if (videoEl.currentTime >= duration || videoEl.ended) { videoEl.pause(); recorder.stop(); return; }
+    const vw = videoEl.videoWidth || W, vh = videoEl.videoHeight || H;
+    const va = vw/vh, fa = W/H;
+    let dw, dh, dx, dy;
+    if (va > fa) { dw=W; dh=W/va; } else { dh=H; dw=H*va; }
+    dx=(W-dw)/2; dy=(H-dh)/2;
+    ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
+    ctx.drawImage(videoEl,dx,dy,dw,dh);
+    if (caption) {
+      const grad=ctx.createLinearGradient(0,H*0.6,0,H);
+      grad.addColorStop(0,'rgba(0,0,0,0)'); grad.addColorStop(1,'rgba(0,0,0,0.75)');
+      ctx.fillStyle=grad; ctx.fillRect(0,H*0.6,W,H*0.4);
+      ctx.fillStyle='white'; ctx.font='500 64px "DM Serif Display",Georgia,serif';
+      ctx.textAlign='left'; ctx.shadowColor='rgba(0,0,0,0.7)'; ctx.shadowBlur=24;
+      wrapText(ctx,caption,80,H-280,W-160,84); ctx.shadowBlur=0;
+    }
+    if (hashtags.length>0 && videoEl.currentTime>duration-4) {
+      const fade=Math.min(1,(videoEl.currentTime-(duration-4))*2);
+      ctx.globalAlpha=fade*0.7; ctx.fillStyle='white';
+      ctx.font='400 36px "DM Sans",sans-serif'; ctx.textAlign='left';
+      ctx.fillText(hashtags.slice(0,5).join(' '),80,H-100); ctx.globalAlpha=1;
+    }
+    const pct=20+Math.round((videoEl.currentTime/duration)*65);
+    bar.style.width=pct+'%'; label.textContent=`Processing... ${Math.round((videoEl.currentTime/duration)*100)}%`;
+    requestAnimationFrame(drawVideoFrame);
+  }
+  requestAnimationFrame(drawVideoFrame);
+}
+
+// Open platform upload page directly
+function openPlatform(platform) {
+  // Save file first so it's ready to upload
+  downloadReel();
+
+  const urls = {
+    tiktok:    'https://www.tiktok.com/upload',
+    instagram: 'https://www.instagram.com/reels/upload',
+    youtube:   'https://studio.youtube.com/channel/upload',
+    facebook:  'https://www.facebook.com/reels/create',
+  };
+
+  const names = {
+    tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube Studio', facebook: 'Facebook'
+  };
+
+  // Small delay so download starts before new tab opens
+  setTimeout(() => {
+    window.open(urls[platform], '_blank');
+    // Show a tip
+    const instr = document.getElementById('share-instructions');
+    instr.innerHTML = `<strong>Your reel was saved!</strong> The ${names[platform]} upload page just opened in a new tab. Find your reel in Downloads and drag it into the upload area.`;
+    instr.style.display = 'block';
+  }, 500);
 }
 </script>
 </body>
