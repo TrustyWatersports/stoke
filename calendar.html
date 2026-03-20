@@ -367,6 +367,13 @@ let dragEventId = null;
   loadEvents();
   renderMiniCal();
   renderTypeFilters();
+  // Pick up pending lead from dashboard quick-parse
+  const pendingLead = sessionStorage.getItem('stoke_pending_lead');
+  if (pendingLead) {
+    sessionStorage.removeItem('stoke_pending_lead');
+    document.getElementById('lead-input').value = pendingLead;
+    setTimeout(() => parseLead(), 800);
+  }
 })();
 
 // ── EVENTS DATA ───────────────────────────────────────────────

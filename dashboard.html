@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stoke — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/stoke.css">
+<style>
+
+/* ── DASHBOARD LAYOUT ─────────────────────────────────────────── */
+.dash-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: auto;
+  gap: 1rem;
+}
+@media(max-width:1000px){ .dash-grid { grid-template-columns: 1fr 1fr; } }
+@media(max-width:640px){  .dash-grid { grid-template-columns: 1fr; } }
+
+/* ── GREETING HERO ────────────────────────────────────────────── */
+.greeting-bar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 0.5px solid var(--border);
+}
+.greeting-text { }
+.greeting-time {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--green);
+  margin-bottom: 4px;
+}
+.greeting-name {
+  font-family: var(--font-serif);
+  font-size: 28px;
+  color: var(--text);
+  line-height: 1.1;
+}
+.greeting-sub {
+  font-size: 13px;
+  color: var(--text-3);
+  margin-top: 4px;
+}
+.greeting-date {
+  text-align: right;
+  font-size: 12px;
+  color: var(--text-3);
+  line-height: 1.7;
+}
+
+/* ── STAT CARDS ───────────────────────────────────────────────── */
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 1.25rem;
+}
+@media(max-width:800px){ .stat-row { grid-template-columns: repeat(2, 1fr); } }
+.stat-card {
+  background: var(--bg-2);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.1rem;
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--accent, var(--green));
+  opacity: .6;
+}
+.stat-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-3);
+  margin-bottom: 6px;
+}
+.stat-value {
+  font-family: var(--font-serif);
+  font-size: 28px;
+  color: var(--text);
+  line-height: 1;
+}
+.stat-delta {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 4px;
+}
+.stat-delta.up { color: var(--green); }
+.stat-delta.down { color: #c0392b; }
+
+/* ── CARDS ────────────────────────────────────────────────────── */
+.dash-card {
+  background: var(--bg);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.dash-card.span-2 { grid-column: span 2; }
+.dash-card.span-3 { grid-column: span 3; }
+@media(max-width:1000px){ .dash-card.span-2 { grid-column: span 2; } .dash-card.span-3 { grid-column: span 2; } }
+@media(max-width:640px){  .dash-card.span-2,.dash-card.span-3 { grid-column: span 1; } }
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .9rem 1.1rem .6rem;
+  border-bottom: 0.5px solid var(--border);
+}
+.card-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.card-action {
+  font-size: 11px;
+  color: var(--green);
+  text-decoration: none;
+  font-weight: 500;
+  transition: opacity .15s;
+}
+.card-action:hover { opacity: .7; }
+.card-body { padding: .9rem 1.1rem; flex: 1; }
+.card-empty {
+  font-size: 12px;
+  color: var(--text-3);
+  text-align: center;
+  padding: 1.5rem 0;
+}
+
+/* ── TODAY'S SCHEDULE ─────────────────────────────────────────── */
+.today-event {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 0.5px solid var(--border);
+  cursor: pointer;
+  transition: background .1s;
+}
+.today-event:last-child { border-bottom: none; }
+.today-event:hover { background: var(--bg-2); margin: 0 -1.1rem; padding: 8px 1.1rem; border-radius: 4px; }
+.today-event-bar {
+  width: 3px;
+  border-radius: 2px;
+  align-self: stretch;
+  min-height: 36px;
+  flex-shrink: 0;
+}
+.today-event-time {
+  font-size: 10px;
+  color: var(--text-3);
+  font-weight: 500;
+  min-width: 56px;
+  padding-top: 1px;
+}
+.today-event-info { flex: 1; }
+.today-event-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+.today-event-sub {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 1px;
+}
+
+/* ── TOOLS GRID ───────────────────────────────────────────────── */
+.tools-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.tool-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: var(--bg-2);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  text-decoration: none;
+  color: var(--text);
+  transition: all .15s;
+  cursor: pointer;
+}
+.tool-btn:hover {
+  border-color: var(--green);
+  background: var(--green-light);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 12px rgba(26,107,74,0.1);
+}
+.tool-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.tool-info { flex: 1; min-width: 0; }
+.tool-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tool-desc {
+  font-size: 10px;
+  color: var(--text-3);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── RECENT ACTIVITY ──────────────────────────────────────────── */
+.activity-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 0.5px solid var(--border);
+}
+.activity-item:last-child { border-bottom: none; }
+.activity-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+.activity-dot.gray { background: var(--text-3); }
+.activity-dot.blue { background: #2196F3; }
+.activity-dot.orange { background: #FF6D00; }
+.activity-info { flex: 1; }
+.activity-text {
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.4;
+}
+.activity-time {
+  font-size: 10px;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+
+/* ── LEADS PANEL ──────────────────────────────────────────────── */
+.lead-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 0.5px solid var(--border);
+  cursor: pointer;
+  transition: background .1s;
+}
+.lead-item:last-child { border-bottom: none; }
+.lead-item:hover { background: var(--bg-2); margin: 0 -1.1rem; padding: 9px 1.1rem; border-radius: 4px; }
+.lead-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--green-light);
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content:center;
+  flex-shrink: 0;
+}
+.lead-info { flex: 1; min-width: 0; }
+.lead-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+.lead-detail {
+  font-size: 11px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lead-badge {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: var(--green-light);
+  color: var(--green);
+  flex-shrink: 0;
+}
+.lead-badge.new { background: #fff3e0; color: #e65100; }
+.lead-badge.quoted { background: #e3f2fd; color: #1565c0; }
+
+/* ── UPCOMING POSTS ───────────────────────────────────────────── */
+.post-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  background: var(--bg-2);
+  border-radius: var(--radius);
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+.post-chip:last-child { margin-bottom: 0; }
+.platform-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.post-chip-text {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-2);
+}
+.post-chip-date {
+  font-size: 10px;
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+
+/* ── QUICK ACTIONS ────────────────────────────────────────────── */
+.quick-action-btn {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--green);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  transition: background .15s;
+}
+.quick-action-btn:last-child { margin-bottom: 0; }
+.quick-action-btn:hover { background: var(--green-mid); }
+.quick-action-btn.secondary {
+  background: var(--bg-2);
+  color: var(--text-2);
+  border: 0.5px solid var(--border);
+}
+.quick-action-btn.secondary:hover {
+  border-color: var(--green);
+  color: var(--green);
+  background: var(--green-light);
+}
+
+/* ── WEATHER/TIDE STRIP ───────────────────────────────────────── */
+.weather-strip {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: .75rem 1.1rem;
+  background: var(--bg-2);
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+}
+.weather-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.weather-val { font-weight: 600; color: var(--text); }
+
+/* ── PULSE RING ANIMATION (for live badge) ────────────────────── */
+@keyframes pulse-ring {
+  0%   { transform: scale(.8); opacity: 1; }
+  100% { transform: scale(2); opacity: 0; }
+}
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--green);
+  position: relative;
+}
+.live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  position: relative;
+}
+.live-dot::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--green);
+  animation: pulse-ring 1.5s ease-out infinite;
+}
+
+/* ── TYPE BADGE ───────────────────────────────────────────────── */
+.type-pill {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 20px;
+  color: white;
+  display: inline-block;
+}
+
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      <svg viewBox="0 0 20 20" fill="none" width="22" height="22">
+        <path d="M10 2C10 2 4 8 4 12a6 6 0 0012 0c0-4-6-10-6-10z" fill="white" opacity=".95"/>
+        <path d="M10 8c0 0-2 3-2 5a2 2 0 004 0c0-2-2-5-2-5z" fill="white" opacity=".45"/>
+      </svg>
+    </div>
+    <span class="wordmark">Stoke</span>
+    <span class="version-badge">v8</span>
+    <nav style="margin-left:auto;display:flex;gap:6px;align-items:center">
+      <a href="index.html"       class="nav-pill">&#9997; Generate</a>
+      <a href="schedule.html"    class="nav-pill">&#128197; Posts</a>
+      <a href="reel-maker.html"  class="nav-pill">&#127916; Reels</a>
+      <a href="calendar.html"    class="nav-pill">&#128344; Calendar</a>
+      <a href="settings.html"    class="nav-pill">&#9881;</a>
+      <span id="auth-indicator" style="display:none;font-size:11px;color:var(--green);background:var(--green-light);padding:3px 10px;border-radius:20px;border:0.5px solid var(--green)"></span>
+    </nav>
+  </div>
+
+  <!-- Greeting bar -->
+  <div class="greeting-bar">
+    <div class="greeting-text">
+      <div class="greeting-time" id="greeting-time">Good morning</div>
+      <div class="greeting-name" id="greeting-name">Welcome back.</div>
+      <div class="greeting-sub" id="greeting-sub">Here's what's happening at Trusty Sail &amp; Paddle today.</div>
+    </div>
+    <div class="greeting-date" id="greeting-date"></div>
+  </div>
+
+  <!-- Stat strip -->
+  <div class="stat-row">
+    <div class="stat-card" style="--accent:#2196F3">
+      <div class="stat-label">Events This Week</div>
+      <div class="stat-value" id="stat-events">—</div>
+      <div class="stat-delta" id="stat-events-sub">bookings &amp; lessons</div>
+    </div>
+    <div class="stat-card" style="--accent:#FF6D00">
+      <div class="stat-label">Open Leads</div>
+      <div class="stat-value" id="stat-leads">—</div>
+      <div class="stat-delta" id="stat-leads-sub">need follow-up</div>
+    </div>
+    <div class="stat-card" style="--accent:var(--green)">
+      <div class="stat-label">Posts Scheduled</div>
+      <div class="stat-value" id="stat-posts">—</div>
+      <div class="stat-delta" id="stat-posts-sub">across platforms</div>
+    </div>
+    <div class="stat-card" style="--accent:#6A1B9A">
+      <div class="stat-label">Campaigns Generated</div>
+      <div class="stat-value" id="stat-campaigns">—</div>
+      <div class="stat-delta" id="stat-campaigns-sub">all time</div>
+    </div>
+  </div>
+
+  <!-- Main dashboard grid -->
+  <div class="dash-grid">
+
+    <!-- TODAY'S SCHEDULE -->
+    <div class="dash-card span-2">
+      <div class="card-header">
+        <div class="card-title">
+          <span>&#128344;</span> Today's Schedule
+          <span class="live-badge"><span class="live-dot"></span>Live</span>
+        </div>
+        <a href="calendar.html" class="card-action">Full calendar &rarr;</a>
+      </div>
+      <div class="card-body" id="today-schedule">
+        <div class="card-empty">Loading schedule...</div>
+      </div>
+    </div>
+
+    <!-- QUICK ACTIONS -->
+    <div class="dash-card">
+      <div class="card-header">
+        <div class="card-title"><span>&#9889;</span> Quick Actions</div>
+      </div>
+      <div class="card-body">
+        <button class="quick-action-btn" onclick="location.href='calendar.html'">
+          &#128197; New Booking
+        </button>
+        <button class="quick-action-btn secondary" onclick="location.href='index.html'">
+          &#9997; Generate Campaign
+        </button>
+        <button class="quick-action-btn secondary" onclick="location.href='reel-maker.html'">
+          &#127916; Create Reel
+        </button>
+        <button class="quick-action-btn secondary" onclick="openLeadParser()">
+          &#10024; Parse Lead Email
+        </button>
+      </div>
+    </div>
+
+    <!-- TOOLS -->
+    <div class="dash-card">
+      <div class="card-header">
+        <div class="card-title"><span>&#128295;</span> Tools</div>
+      </div>
+      <div class="card-body" style="padding:.75rem">
+        <div class="tools-grid">
+          <a href="index.html" class="tool-btn">
+            <div class="tool-icon" style="background:#e8f5ef">&#9997;</div>
+            <div class="tool-info">
+              <div class="tool-name">Generator</div>
+              <div class="tool-desc">AI campaigns</div>
+            </div>
+          </a>
+          <a href="schedule.html" class="tool-btn">
+            <div class="tool-icon" style="background:#e3f2fd">&#128197;</div>
+            <div class="tool-info">
+              <div class="tool-name">Schedule</div>
+              <div class="tool-desc">Post calendar</div>
+            </div>
+          </a>
+          <a href="reel-maker.html" class="tool-btn">
+            <div class="tool-icon" style="background:#fce4ec">&#127916;</div>
+            <div class="tool-info">
+              <div class="tool-name">Reel Maker</div>
+              <div class="tool-desc">Photos &amp; video</div>
+            </div>
+          </a>
+          <a href="calendar.html" class="tool-btn">
+            <div class="tool-icon" style="background:#f3e5f5">&#128344;</div>
+            <div class="tool-info">
+              <div class="tool-name">Calendar</div>
+              <div class="tool-desc">Bookings &amp; jobs</div>
+            </div>
+          </a>
+          <a href="voice-wizard.html" class="tool-btn">
+            <div class="tool-icon" style="background:#fff8e1">&#10024;</div>
+            <div class="tool-info">
+              <div class="tool-name">Voice</div>
+              <div class="tool-desc">Brand tone</div>
+            </div>
+          </a>
+          <a href="settings.html" class="tool-btn">
+            <div class="tool-icon" style="background:#f1f8e9">&#9881;</div>
+            <div class="tool-info">
+              <div class="tool-name">Settings</div>
+              <div class="tool-desc">Business info</div>
+            </div>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- OPEN LEADS -->
+    <div class="dash-card">
+      <div class="card-header">
+        <div class="card-title"><span>&#128276;</span> Open Leads</div>
+        <a href="calendar.html" class="card-action">View all &rarr;</a>
+      </div>
+      <div class="card-body" id="leads-panel">
+        <div class="card-empty">No open leads</div>
+      </div>
+    </div>
+
+    <!-- UPCOMING SOCIAL POSTS -->
+    <div class="dash-card">
+      <div class="card-header">
+        <div class="card-title"><span>&#128247;</span> Scheduled Posts</div>
+        <a href="schedule.html" class="card-action">Edit schedule &rarr;</a>
+      </div>
+      <div class="card-body" id="posts-panel">
+        <div class="card-empty">No posts scheduled.<br>
+          <a href="index.html" style="color:var(--green);font-size:12px">Generate a campaign &rarr;</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- RECENT ACTIVITY -->
+    <div class="dash-card">
+      <div class="card-header">
+        <div class="card-title"><span>&#128200;</span> Recent Activity</div>
+      </div>
+      <div class="card-body" id="activity-panel">
+        <div class="card-empty">No recent activity</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- AI Lead Parser Modal (quick access) -->
+<div id="lead-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:200" onclick="closeLeadParser()"></div>
+<div id="lead-modal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--bg);border:0.5px solid var(--border);border-radius:16px;padding:1.5rem;width:480px;max-width:95vw;z-index:201;box-shadow:0 16px 60px rgba(0,0,0,0.15)">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+    <div style="font-family:var(--font-serif);font-size:20px">&#10024; AI Lead Parser</div>
+    <button onclick="closeLeadParser()" style="border:none;background:none;cursor:pointer;font-size:18px;color:var(--text-3)">&#x2715;</button>
+  </div>
+  <div style="font-size:12px;color:var(--text-3);margin-bottom:.75rem">Paste a customer email or inquiry — AI will extract the details and create a calendar event.</div>
+  <textarea id="dash-lead-input" rows="5" placeholder="Hi, I'm interested in booking a kayak rental for next Saturday..." style="width:100%;font-size:13px;font-family:var(--font-body);border:0.5px solid var(--border-2);border-radius:var(--radius);background:var(--bg-2);color:var(--text);padding:10px 12px;resize:vertical;outline:none;margin-bottom:.75rem"></textarea>
+  <button onclick="sendToCalendar()" style="width:100%;padding:12px;background:var(--green);color:white;border:none;border-radius:var(--radius);font-family:var(--font-body);font-size:14px;font-weight:500;cursor:pointer">
+    &#10024; Parse &amp; Open Calendar
+  </button>
+</div>
+
+<style>
+.nav-pill {
+  font-size: 12px;
+  color: var(--text-3);
+  text-decoration: none;
+  padding: 4px 10px;
+  border: 0.5px solid var(--border);
+  border-radius: 20px;
+  transition: all .15s;
+}
+.nav-pill:hover { color: var(--green); border-color: var(--green); }
+</style>
+
+<script>
+const TYPE_COLORS = {
+  rental:'#2196F3', rigging:'#FF6D00', lesson:'#2E7D32',
+  sailboat:'#6A1B9A', social:'#1a6b4a', blocked:'#616161', other:'#888'
+};
+const TYPE_LABELS = {
+  rental:'Rental', rigging:'Rigging', lesson:'Lesson',
+  sailboat:'Sailboat', social:'Social', blocked:'Blocked', other:'Other'
+};
+const PLATFORM_COLORS = {
+  instagram:'#E1306C', facebook:'#1877F2', tiktok:'#010101',
+  linkedin:'#0A66C2', youtube:'#FF0000', twitter:'#1DA1F2'
+};
+
+// ── AUTH + INIT ───────────────────────────────────────────────
+(async function init() {
+  setGreeting();
+  setDate();
+  loadStats();
+  loadTodaySchedule();
+  loadPosts();
+  loadActivity();
+  loadLeads();
+  try {
+    const me = await fetch('/auth/me').then(r => r.json());
+    if (me.authenticated) {
+      document.getElementById('auth-indicator').textContent = me.user?.name;
+      document.getElementById('auth-indicator').style.display = 'inline-flex';
+      document.getElementById('greeting-name').textContent =
+        `Good ${getTimeOfDay()}, ${(me.user?.name || '').split(' ')[0]}.`;
+      document.getElementById('greeting-sub').textContent =
+        `Here's what's happening at ${me.business?.name || 'your shop'} today.`;
+    }
+  } catch(e) {}
+})();
+
+// ── GREETING ──────────────────────────────────────────────────
+function getTimeOfDay() {
+  const h = new Date().getHours();
+  return h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
+}
+function setGreeting() {
+  document.getElementById('greeting-time').textContent =
+    `Good ${getTimeOfDay()}`;
+}
+function setDate() {
+  const now = new Date();
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('greeting-date').innerHTML =
+    `<div style="font-weight:600;color:var(--text);font-size:14px">${days[now.getDay()]}</div>
+     <div>${months[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}</div>
+     <div id="clock" style="font-family:var(--font-serif);font-size:18px;margin-top:2px"></div>`;
+  tickClock();
+  setInterval(tickClock, 1000);
+}
+function tickClock() {
+  const now = new Date();
+  const h = now.getHours(), m = now.getMinutes();
+  const el = document.getElementById('clock');
+  if (el) el.textContent = `${h===0?12:h>12?h-12:h}:${String(m).padStart(2,'0')}${h<12?'am':'pm'}`;
+}
+
+// ── STATS ─────────────────────────────────────────────────────
+function loadStats() {
+  // Events this week
+  const events = getLocalEvents();
+  const now = new Date();
+  const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay()); weekStart.setHours(0,0,0,0);
+  const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 7);
+  const weekEvents = events.filter(e => {
+    const s = new Date(e.start);
+    return s >= weekStart && s < weekEnd && e.type !== 'social' && e.type !== 'blocked';
+  });
+  document.getElementById('stat-events').textContent = weekEvents.length;
+
+  // Leads (from localStorage for now)
+  const leads = getLocalLeads();
+  const openLeads = leads.filter(l => l.status === 'new' || l.status === 'contacted');
+  document.getElementById('stat-leads').textContent = openLeads.length;
+  if (openLeads.length > 0) document.getElementById('stat-leads-sub').className = 'stat-delta up';
+
+  // Scheduled posts
+  const posts = getScheduledPosts();
+  document.getElementById('stat-posts').textContent = posts.length;
+
+  // Campaigns
+  const history = getHistory();
+  document.getElementById('stat-campaigns').textContent = history.length;
+}
+
+// ── TODAY'S SCHEDULE ──────────────────────────────────────────
+function loadTodaySchedule() {
+  const events = getLocalEvents();
+  const today = new Date().toDateString();
+  const todayEvts = events
+    .filter(e => new Date(e.start).toDateString() === today)
+    .sort((a,b) => new Date(a.start) - new Date(b.start));
+
+  const el = document.getElementById('today-schedule');
+  if (todayEvts.length === 0) {
+    el.innerHTML = `<div class="card-empty" style="padding:1rem 0">
+      No events scheduled today.
+      <div style="margin-top:8px"><a href="calendar.html" style="color:var(--green);font-size:12px">Open calendar to add one &rarr;</a></div>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = todayEvts.map(e => {
+    const start = new Date(e.start);
+    const end   = new Date(e.end);
+    const color = TYPE_COLORS[e.type] || '#888';
+    const timeStr = e.allDay ? 'All day' : `${fmt(start)} – ${fmt(end)}`;
+    return `<div class="today-event" onclick="location.href='calendar.html'">
+      <div class="today-event-bar" style="background:${color}"></div>
+      <div class="today-event-time">${timeStr}</div>
+      <div class="today-event-info">
+        <div class="today-event-title">${esc(e.title)}</div>
+        <div class="today-event-sub">
+          <span class="type-pill" style="background:${color}">${TYPE_LABELS[e.type]||e.type}</span>
+          ${e.customerName ? ` &nbsp;${esc(e.customerName)}` : ''}
+          ${e.amount ? ` &nbsp;· $${e.amount}` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── SCHEDULED POSTS ───────────────────────────────────────────
+function loadPosts() {
+  const posts = getScheduledPosts().slice(0, 5);
+  const el = document.getElementById('posts-panel');
+  if (posts.length === 0) return;
+
+  el.innerHTML = posts.map(p => {
+    const color = PLATFORM_COLORS[p.channel?.toLowerCase()] || '#888';
+    const date = p.scheduledDateStr ? new Date(p.scheduledDateStr) : null;
+    const dateLabel = date ? date.toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
+    return `<div class="post-chip">
+      <div class="platform-dot" style="background:${color}"></div>
+      <div class="post-chip-text">${esc((p.text||'').substring(0,60))}…</div>
+      <div class="post-chip-date">${dateLabel}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── RECENT ACTIVITY ───────────────────────────────────────────
+function loadActivity() {
+  const activity = [];
+  const history = getHistory();
+  if (history.length > 0) {
+    const last = history[history.length-1];
+    activity.push({ color:'green', text:`Campaign generated: "${last.meta?.jobType || 'social content'}"`, time: last.createdAt || 'recently' });
+  }
+  const events = getLocalEvents();
+  const recentEvts = events
+    .filter(e => e.createdAt && new Date(e.createdAt) > new Date(Date.now() - 7*86400000))
+    .slice(-3).reverse();
+  recentEvts.forEach(e => {
+    activity.push({ color: e.type==='rigging'?'orange':e.type==='rental'?'blue':'green',
+      text: `Event added: ${e.title}`, time: e.createdAt });
+  });
+
+  const el = document.getElementById('activity-panel');
+  if (activity.length === 0) return;
+  el.innerHTML = activity.slice(0,6).map(a => `
+    <div class="activity-item">
+      <div class="activity-dot ${a.color==='green'?'':a.color}"></div>
+      <div class="activity-info">
+        <div class="activity-text">${esc(a.text)}</div>
+        <div class="activity-time">${fmtRelative(a.time)}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ── LEADS ─────────────────────────────────────────────────────
+function loadLeads() {
+  const leads = getLocalLeads();
+  const el = document.getElementById('leads-panel');
+  if (leads.length === 0) return;
+  el.innerHTML = leads.slice(0, 5).map(l => {
+    const initials = (l.customerName||'?').split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
+    const badgeClass = l.status==='new'?'new':l.status==='quoted'?'quoted':'';
+    return `<div class="lead-item" onclick="location.href='calendar.html'">
+      <div class="lead-avatar">${initials}</div>
+      <div class="lead-info">
+        <div class="lead-name">${esc(l.customerName||'Unknown')}</div>
+        <div class="lead-detail">${esc(l.serviceType||'')} ${l.preferredDates?'· '+esc(l.preferredDates):''}</div>
+      </div>
+      <div class="lead-badge ${badgeClass}">${l.status||'new'}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── AI LEAD PARSER MODAL ──────────────────────────────────────
+function openLeadParser() {
+  document.getElementById('lead-modal').style.display = 'block';
+  document.getElementById('lead-modal-overlay').style.display = 'block';
+  setTimeout(() => document.getElementById('dash-lead-input').focus(), 100);
+}
+function closeLeadParser() {
+  document.getElementById('lead-modal').style.display = 'none';
+  document.getElementById('lead-modal-overlay').style.display = 'none';
+}
+function sendToCalendar() {
+  const text = document.getElementById('dash-lead-input').value.trim();
+  if (!text) return;
+  // Store the lead text in sessionStorage so calendar.html can pick it up
+  sessionStorage.setItem('stoke_pending_lead', text);
+  location.href = 'calendar.html';
+}
+
+// ── DATA HELPERS ──────────────────────────────────────────────
+function getLocalEvents() {
+  try { return JSON.parse(localStorage.getItem('stoke_events') || '[]'); } catch(e) { return []; }
+}
+function getLocalLeads() {
+  try { return JSON.parse(localStorage.getItem('stoke_leads') || '[]'); } catch(e) { return []; }
+}
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem('stoke_history') || '[]'); } catch(e) { return []; }
+}
+function getScheduledPosts() {
+  const posts = [];
+  try {
+    const history = getHistory();
+    history.forEach(entry => {
+      (entry.campaign || []).forEach(day => {
+        if (!day.scheduledDateStr) return;
+        (day.posts || []).filter(p => p.status === 'scheduled' || p.status === 'approved').forEach(p => {
+          posts.push({ ...p, scheduledDateStr: day.scheduledDateStr });
+        });
+      });
+    });
+  } catch(e) {}
+  return posts.sort((a,b) => new Date(a.scheduledDateStr) - new Date(b.scheduledDateStr));
+}
+
+// ── FORMAT HELPERS ────────────────────────────────────────────
+function fmt(d) {
+  d = new Date(d);
+  const h=d.getHours(), m=d.getMinutes();
+  return `${h===0?12:h>12?h-12:h}:${String(m).padStart(2,'0')}${h<12?'am':'pm'}`;
+}
+function fmtRelative(ts) {
+  if (!ts) return 'recently';
+  const diff = Date.now() - new Date(ts).getTime();
+  const mins = Math.floor(diff/60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins/60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs/24)}d ago`;
+}
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+</script>
+</body>
+</html>
