@@ -761,43 +761,84 @@ function animatePreview(canvas, imgs, caption, spp) {
     // Draw photo — cover fill with Ken Burns transform
     drawCoverPhoto(ctx, img, W, H, scale, tx, ty);
 
-    // Dark gradient overlay at bottom for text
-    if (caption) {
-      const grad = ctx.createLinearGradient(0, H * 0.55, 0, H);
-      grad.addColorStop(0, 'rgba(0,0,0,0)');
-      grad.addColorStop(1, 'rgba(0,0,0,0.75)');
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, H * 0.55, W, H * 0.45);
+    // Color grade overlay per vibe
+    if (selectedVibe === 'energy') {
+      // Warm punch — slight orange tint
+      ctx.fillStyle = 'rgba(255,80,0,0.06)';
+      ctx.fillRect(0, 0, W, H);
+    } else if (selectedVibe === 'showcase') {
+      // Cool cinematic — slight blue tint
+      ctx.fillStyle = 'rgba(0,40,120,0.07)';
+      ctx.fillRect(0, 0, W, H);
+    } else {
+      // Story — warm soft
+      ctx.fillStyle = 'rgba(255,200,100,0.04)';
+      ctx.fillRect(0, 0, W, H);
     }
 
-    // Top gradient (subtle)
-    const topGrad = ctx.createLinearGradient(0, 0, 0, 150);
-    topGrad.addColorStop(0, 'rgba(0,0,0,0.3)');
+    // Corner vignette for cinematic depth
+    const vig = ctx.createRadialGradient(W/2, H/2, H*0.35, W/2, H/2, H*0.85);
+    vig.addColorStop(0, 'rgba(0,0,0,0)');
+    vig.addColorStop(1, 'rgba(0,0,0,0.45)');
+    ctx.fillStyle = vig;
+    ctx.fillRect(0, 0, W, H);
+
+    // Flash effect on photo cut (first 3 frames of each photo)
+    if (photoIdx > 0 && photoProgress < 0.06) {
+      const flashOpacity = (1 - photoProgress / 0.06) * 0.35;
+      ctx.fillStyle = `rgba(255,255,255,${flashOpacity})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    // Bottom gradient for caption
+    if (caption) {
+      const grad = ctx.createLinearGradient(0, H * 0.5, 0, H);
+      grad.addColorStop(0, 'rgba(0,0,0,0)');
+      grad.addColorStop(1, 'rgba(0,0,0,0.82)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, H * 0.5, W, H * 0.5);
+    }
+
+    // Top gradient
+    const topGrad = ctx.createLinearGradient(0, 0, 0, 180);
+    topGrad.addColorStop(0, 'rgba(0,0,0,0.35)');
     topGrad.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = topGrad;
-    ctx.fillRect(0, 0, W, 150);
+    ctx.fillRect(0, 0, W, 180);
 
     // Caption text — always visible, no fade per photo
     if (caption) {
       ctx.globalAlpha = 1;
+      // Pill background for readability
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.beginPath();
+      ctx.roundRect(52, H - 290, W - 104, 220, 12);
+      ctx.fill();
       ctx.fillStyle = 'white';
-      ctx.font = `500 ${selectedVibe === 'energy' ? 68 : 60}px "DM Serif Display", Georgia, serif`;
+      ctx.font = `500 ${selectedVibe === 'energy' ? 64 : 58}px "DM Serif Display", Georgia, serif`;
       ctx.textAlign = 'left';
-      ctx.shadowColor = 'rgba(0,0,0,0.6)';
-      ctx.shadowBlur = 20;
-      wrapText(ctx, caption, 70, H - 220, W - 140, 80);
+      ctx.shadowColor = 'rgba(0,0,0,0.8)';
+      ctx.shadowBlur = 16;
+      wrapText(ctx, caption, 72, H - 220, W - 144, 76);
       ctx.shadowBlur = 0;
     }
 
-    // Progress dots
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
-    imgs.forEach((_, di) => {
-      const dotX = W/2 + (di - (imgs.length-1)/2) * 22;
-      ctx.beginPath();
-      ctx.arc(dotX, H - 80, di === photoIdx ? 6 : 4, 0, Math.PI*2);
-      ctx.fillStyle = di === photoIdx ? 'white' : 'rgba(255,255,255,0.4)';
-      ctx.fill();
-    });
+    // Progress indicator — thin line with active dot
+    const lineY = H - 60;
+    const lineW = Math.min(200, imgs.length * 36);
+    const lineX = W/2 - lineW/2;
+    // Track line
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.fillRect(lineX, lineY - 1, lineW, 2);
+    // Active progress
+    const progress = (photoIdx + photoProgress) / imgs.length;
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.fillRect(lineX, lineY - 1, lineW * progress, 2);
+    // Dot at current position
+    ctx.beginPath();
+    ctx.arc(lineX + lineW * progress, lineY, 5, 0, Math.PI*2);
+    ctx.fillStyle = 'white';
+    ctx.fill();
 
     previewAnimFrame = requestAnimationFrame(frame);
   }
@@ -981,33 +1022,50 @@ async function createReel() {
       ty = photoProgress * -50;
     }
 
-    // Draw current photo — hard cut, no crossfade, no globalAlpha manipulation
+    // Draw photo
     drawCoverPhoto(ctx, img, W, H, scale, tx, ty);
 
-    // Bottom gradient — always at full opacity, always drawn
-    if (caption) {
-      const grad = ctx.createLinearGradient(0, H * 0.5, 0, H);
-      grad.addColorStop(0, 'rgba(0,0,0,0)');
-      grad.addColorStop(1, 'rgba(0,0,0,0.85)');
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, H * 0.5, W, H * 0.5);
+    // Color grade per vibe
+    if (selectedVibe === 'energy') {
+      ctx.fillStyle = 'rgba(255,80,0,0.06)'; ctx.fillRect(0,0,W,H);
+    } else if (selectedVibe === 'showcase') {
+      ctx.fillStyle = 'rgba(0,40,120,0.07)'; ctx.fillRect(0,0,W,H);
+    } else {
+      ctx.fillStyle = 'rgba(255,200,100,0.04)'; ctx.fillRect(0,0,W,H);
     }
 
-    // Top vignette
-    const topGrad = ctx.createLinearGradient(0, 0, 0, 180);
-    topGrad.addColorStop(0, 'rgba(0,0,0,0.3)');
-    topGrad.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = topGrad;
-    ctx.fillRect(0, 0, W, 180);
+    // Corner vignette
+    const vig = ctx.createRadialGradient(W/2,H/2,H*0.35,W/2,H/2,H*0.85);
+    vig.addColorStop(0,'rgba(0,0,0,0)'); vig.addColorStop(1,'rgba(0,0,0,0.45)');
+    ctx.fillStyle = vig; ctx.fillRect(0,0,W,H);
 
-    // Caption — always full opacity, no alpha changes anywhere near this
+    // Flash on cut
+    if (photoIdx > 0 && photoProgress < 0.06) {
+      const f = (1 - photoProgress/0.06) * 0.35;
+      ctx.fillStyle = `rgba(255,255,255,${f})`; ctx.fillRect(0,0,W,H);
+    }
+
+    // Bottom gradient
     if (caption) {
+      const grad = ctx.createLinearGradient(0, H*0.5, 0, H);
+      grad.addColorStop(0,'rgba(0,0,0,0)'); grad.addColorStop(1,'rgba(0,0,0,0.85)');
+      ctx.fillStyle = grad; ctx.fillRect(0, H*0.5, W, H*0.5);
+    }
+
+    // Top gradient
+    const topGrad = ctx.createLinearGradient(0,0,0,180);
+    topGrad.addColorStop(0,'rgba(0,0,0,0.35)'); topGrad.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle = topGrad; ctx.fillRect(0,0,W,180);
+
+    // Caption with pill background
+    if (caption) {
+      ctx.fillStyle = 'rgba(0,0,0,0.28)';
+      ctx.beginPath(); ctx.roundRect(52, H-310, W-104, 240, 14); ctx.fill();
       ctx.fillStyle = 'white';
-      ctx.font = (selectedVibe === 'energy' ? '500 68px' : '500 60px') + ' "DM Serif Display", Georgia, serif';
+      ctx.font = (selectedVibe==='energy'?'500 68px':'500 60px')+' "DM Serif Display",Georgia,serif';
       ctx.textAlign = 'left';
-      ctx.shadowColor = 'rgba(0,0,0,0.9)';
-      ctx.shadowBlur = 28;
-      wrapText(ctx, caption, 72, H - 300, W - 144, 80);
+      ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 20;
+      wrapText(ctx, caption, 80, H-240, W-160, 80);
       ctx.shadowBlur = 0;
     }
 
