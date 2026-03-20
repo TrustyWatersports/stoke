@@ -983,19 +983,21 @@ async function createReel() {
       ty = photoProgress * -50;
     }
 
-    // Crossfade between photos — draw previous photo first, then new photo on top
+    // Crossfade between photos — isolated with save/restore so globalAlpha never bleeds
+    ctx.save();
     if (photoIdx > 0 && timeInPhoto < 0.4) {
       const fade = timeInPhoto / 0.4;
       ctx.globalAlpha = 1;
       drawCoverPhoto(ctx, validImgs[photoIdx - 1], W, H, 1.05, 0, 0);
-      ctx.globalAlpha = fade;
+      ctx.globalAlpha = Math.max(0.001, fade); // never fully 0
       drawCoverPhoto(ctx, img, W, H, scale, tx, ty);
     } else {
+      ctx.globalAlpha = 1;
       drawCoverPhoto(ctx, img, W, H, scale, tx, ty);
     }
+    ctx.restore(); // globalAlpha is guaranteed 1 after this
 
-    // Always reset globalAlpha before drawing overlays
-    ctx.globalAlpha = 1;
+    // globalAlpha is now definitely 1 — safe to draw overlays
 
     // Bottom gradient — permanent once caption exists
     if (caption) {
