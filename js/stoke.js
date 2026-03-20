@@ -1,9 +1,60 @@
 /**
- * stoke.js — v8.3
- * Streaming, photo-to-post matching, card drag-and-drop,
- * IndexedDB photo history, regenerate post, CSV export,
- * photo display fix (object-fit: contain)
+ * stoke.js — v8.4
+ * Added: D1 API layer — settings and campaigns sync to backend when logged in.
+ * Falls back to localStorage when not authenticated (offline/demo mode).
  */
+
+// ── AUTH STATE ────────────────────────────────────────────────────────────
+const auth = { user: null, business: null, checked: false };
+
+async function checkAuth() {
+  if (auth.checked) return auth.user;
+  try {
+    const data = await fetch('/auth/me').then(r => r.json());
+    if (data.authenticated) {
+      auth.user     = data.user;
+      auth.business = data.business;
+      updateAuthUI();
+    }
+  } catch(e) { console.warn('[Stoke] Auth check failed:', e.message); }
+  auth.checked = true;
+  return auth.user;
+}
+
+function updateAuthUI() {
+  // Show user name in header if logged in
+  const el = document.getElementById('auth-indicator');
+  if (el && auth.user) {
+    el.textContent = auth.user.name || auth.user.email;
+    el.style.display = 'inline-flex';
+  }
+}
+
+// ── API HELPERS ───────────────────────────────────────────────────────────
+async function apiGet(path) {
+  const r = await fetch(path, { credentials: 'include' });
+  if (!r.ok) throw new Error(`API ${path} failed: ${r.status}`);
+  return r.json();
+}
+async function apiPost(path, body) {
+  const r = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body) });
+  if (!r.ok) throw new Error(`API ${path} failed: ${r.status}`);
+  return r.json();
+}
+
+// ── SETTINGS — D1 + localStorage fallback ────────────────────────────────
+async function loadSettingsFromAPI() {
+  try {
+    if (!auth.user) return null;
+    return await apiGet('/api/settings');
+  } catch(e) { return null; }
+}
+async function saveSettingsToAPI(data) {
+  try {
+    if (!auth.user) return;
+    await apiPost('/api/settings', data);
+  } catch(e) { console.warn('[Stoke] Settings sync failed:', e.message); }
+}
 
 // ── SETTINGS ──────────────────────────────────────────────────────────────
 function loadSettings() {
@@ -378,6 +429,10 @@ async function saveToHistory(campaign,meta,photos) {
     localStorage.setItem(HISTORY_KEY,JSON.stringify(history));
     updateHistoryBadge(history.length);
     if(photos&&photos.length>0)await savePhotosIDB(id,photos);
+    // Also save to D1 if logged in
+    if(auth.user){
+      apiPost('/api/campaigns',{meta,campaign:saveable}).catch(e=>console.warn('[Stoke] D1 campaign save:',e.message));
+    }
   } catch(e){console.warn('[Stoke] History:',e.message);}
 }
 function updateHistoryBadge(count){const badge=document.getElementById('history-badge');if(badge){badge.textContent=count;badge.style.display=count>0?'inline-flex':'none';}}
@@ -438,6 +493,19 @@ function resetForm(){
 
 // ── INIT ──────────────────────────────────────────────────────────────────
 (function init(){
+  // Check auth first, then load settings from API if logged in
+  checkAuth().then(async user => {
+    if (user) {
+      try {
+        const apiSettings = await loadSettingsFromAPI();
+        if (apiSettings && Object.keys(apiSettings).length > 0) {
+          // Sync API settings to localStorage so getSettings() picks them up
+          localStorage.setItem('stoke_settings', JSON.stringify(apiSettings));
+        }
+      } catch(e) { console.warn('[Stoke] Could not load settings from API'); }
+    }
+    applySettingsToForm();
+  });
   applySettingsToForm();updateHistoryBadge(loadHistory().length);
   const zone=document.getElementById('photo-zone');
   zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('drag-over');});

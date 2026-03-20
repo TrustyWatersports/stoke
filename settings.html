@@ -376,7 +376,20 @@ function applySettings(s) {
   if (s.appearance) { const cp=s.appearance.colorPrimary||'#1a6b4a'; const ca=s.appearance.colorAccent||'#0f4a32'; document.getElementById('color-primary').value=cp; document.getElementById('color-accent').value=ca; document.getElementById('color-primary-val').textContent=cp; document.getElementById('color-accent-val').textContent=ca; updateColor('--green',cp); updateColor('--green-mid',ca); document.getElementById('pref-auto-approve').checked=!!s.appearance.autoApprove; document.getElementById('pref-photo-strip').checked=s.appearance.photoStrip!==false; }
 }
 
-function saveSettings() { localStorage.setItem('stoke_settings', JSON.stringify(gatherSettings())); const el=document.getElementById('save-status'); el.textContent='✓ Saved'; el.className='save-status saved'; setTimeout(()=>{el.textContent='All changes saved';},2000); }
+async function saveSettings() {
+  const data = gatherSettings();
+  localStorage.setItem('stoke_settings', JSON.stringify(data));
+  // Also sync to D1 if logged in
+  try {
+    const me = await fetch('/auth/me').then(r=>r.json());
+    if (me.authenticated) {
+      await fetch('/api/settings', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body:JSON.stringify(data)});
+    }
+  } catch(e) { console.warn('[Stoke] Settings API sync failed:', e.message); }
+  const el=document.getElementById('save-status');
+  el.textContent='✓ Saved'; el.className='save-status saved';
+  setTimeout(()=>{el.textContent='All changes saved';},2000);
+}
 function resetSettings() { if(!confirm('Reset all settings to defaults?')) return; localStorage.removeItem('stoke_settings'); initLoad(); markUnsaved(); }
 function markUnsaved() { const el=document.getElementById('save-status'); el.textContent='Unsaved changes'; el.className='save-status'; }
 function showComingSoon(p) { alert(`${p} direct publishing is coming soon. Use the Copy button on each post card for now.`); }
