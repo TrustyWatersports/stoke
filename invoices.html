@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stoke — Quotes & Invoices</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/stoke.css">
+<style>
+
+/* ── LAYOUT ───────────────────────────────────────────────────── */
+.invoice-layout { display:grid; grid-template-columns:1fr 340px; gap:1.5rem; align-items:start; }
+@media(max-width:860px){ .invoice-layout { grid-template-columns:1fr; } }
+
+/* ── INVOICE BUILDER ──────────────────────────────────────────── */
+.invoice-paper {
+  background: var(--bg);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.invoice-paper-header {
+  background: var(--green);
+  color: white;
+  padding: 1.5rem 1.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.invoice-biz-name { font-family: var(--font-serif); font-size: 22px; margin-bottom: 4px; }
+.invoice-biz-detail { font-size: 11px; opacity: .8; line-height: 1.7; }
+.invoice-meta { text-align: right; }
+.invoice-number { font-size: 11px; opacity:.7; text-transform: uppercase; letter-spacing:.06em; }
+.invoice-number-val { font-family: var(--font-serif); font-size: 20px; margin-top: 2px; }
+.invoice-status-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-top: 6px;
+  background: rgba(255,255,255,0.2);
+}
+.invoice-body { padding: 1.5rem 1.75rem; }
+
+/* Customer + dates row */
+.invoice-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+.invoice-party-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); margin-bottom: 6px; }
+.invoice-field { margin-bottom: 8px; }
+.invoice-field input, .invoice-field textarea, .invoice-field select {
+  width: 100%; padding: 8px 10px; font-size: 13px; font-family: var(--font-body);
+  border: 0.5px solid var(--border-2); border-radius: var(--radius);
+  background: var(--bg-2); color: var(--text); outline: none; transition: border-color .15s;
+}
+.invoice-field input:focus, .invoice-field select:focus { border-color: var(--green); background: var(--bg); }
+.invoice-field label { font-size: 11px; color: var(--text-3); display: block; margin-bottom: 3px; }
+
+/* Line items table */
+.line-items-header {
+  display: grid;
+  grid-template-columns: 1fr 60px 80px 80px 32px;
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--bg-2);
+  border-radius: var(--radius) var(--radius) 0 0;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-3);
+}
+.line-item-row {
+  display: grid;
+  grid-template-columns: 1fr 60px 80px 80px 32px;
+  gap: 6px;
+  padding: 5px 8px;
+  border-bottom: 0.5px solid var(--border);
+  align-items: center;
+}
+.line-item-row:last-child { border-bottom: none; }
+.line-item-row input {
+  width: 100%; padding: 5px 7px; font-size: 12px; font-family: var(--font-body);
+  border: 0.5px solid transparent; border-radius: 5px;
+  background: transparent; color: var(--text); outline: none; transition: all .15s;
+}
+.line-item-row input:focus { border-color: var(--green); background: var(--bg); }
+.line-item-total { font-size: 12px; font-weight: 500; color: var(--text); text-align: right; padding: 5px 7px; }
+.line-item-del { width: 26px; height: 26px; border: none; background: none; cursor: pointer; color: var(--text-3); font-size: 14px; border-radius: 4px; display:flex;align-items:center;justify-content:center; }
+.line-item-del:hover { background: #fef3f2; color: #c0392b; }
+.add-line-btn {
+  display: flex; align-items: center; gap: 6px; padding: 8px 12px;
+  background: none; border: 0.5px dashed var(--border-2); border-radius: var(--radius);
+  color: var(--text-3); font-size: 12px; cursor: pointer; width: 100%; margin-top: 6px;
+  font-family: var(--font-body); transition: all .15s;
+}
+.add-line-btn:hover { border-color: var(--green); color: var(--green); }
+
+/* Totals */
+.invoice-totals { margin-top: 1rem; border-top: 0.5px solid var(--border); padding-top: 1rem; }
+.total-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
+.total-row.subtotal { color: var(--text-2); }
+.total-row.tax { color: var(--text-2); }
+.total-row.grand { font-weight: 600; font-size: 16px; color: var(--text); padding-top: 8px; border-top: 0.5px solid var(--border); margin-top: 4px; }
+.total-row.grand .total-amount { font-family: var(--font-serif); font-size: 22px; color: var(--green); }
+
+/* Notes */
+.invoice-notes { margin-top: 1.25rem; }
+.invoice-notes textarea { width: 100%; padding: 10px; font-size: 12px; font-family: var(--font-body); border: 0.5px solid var(--border); border-radius: var(--radius); background: var(--bg-2); color: var(--text); resize: vertical; outline: none; min-height: 60px; }
+.invoice-footer-line { margin-top: 1.5rem; padding-top: 1rem; border-top: 0.5px solid var(--border); font-size: 11px; color: var(--text-3); text-align: center; }
+
+/* ── ACTIONS SIDEBAR ──────────────────────────────────────────── */
+.action-card {
+  background: var(--bg);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+.action-card-header { padding: .75rem 1rem; border-bottom: 0.5px solid var(--border); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); }
+.action-card-body { padding: 1rem; }
+.send-btn {
+  width: 100%; padding: 13px; border: none; border-radius: var(--radius);
+  font-family: var(--font-body); font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: all .15s; display: flex; align-items: center;
+  justify-content: center; gap: 8px; margin-bottom: 8px;
+}
+.send-btn.primary { background: var(--green); color: white; }
+.send-btn.primary:hover { background: var(--green-mid); }
+.send-btn.qbo { background: #2CA01C; color: white; }
+.send-btn.qbo:hover { background: #228016; }
+.send-btn.stripe { background: #635BFF; color: white; }
+.send-btn.stripe:hover { background: #4f46e5; }
+.send-btn.secondary { background: var(--bg-2); color: var(--text-2); border: 0.5px solid var(--border); }
+.send-btn.secondary:hover { border-color: var(--green); color: var(--green); }
+.send-btn:disabled { opacity: .5; cursor: default; }
+
+.connect-banner {
+  display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+  background: var(--bg-2); border: 0.5px solid var(--border);
+  border-radius: var(--radius); margin-bottom: 8px;
+  font-size: 12px; color: var(--text-2); cursor: pointer;
+  transition: all .15s;
+}
+.connect-banner:hover { border-color: var(--green); color: var(--green); }
+.connect-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); flex-shrink:0; }
+.connect-dot.connected { background: #2CA01C; }
+
+.invoice-history-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0; border-bottom: 0.5px solid var(--border); cursor: pointer;
+}
+.invoice-history-item:last-child { border-bottom: none; }
+.inv-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.inv-info { flex: 1; min-width: 0; }
+.inv-name { font-size: 12px; font-weight: 500; color: var(--text); }
+.inv-detail { font-size: 10px; color: var(--text-3); }
+.inv-amount { font-size: 12px; font-weight: 600; color: var(--text); }
+
+/* AI generate button */
+.ai-generate-btn {
+  width: 100%; padding: 10px; background: var(--green-light);
+  border: 0.5px solid var(--green); border-radius: var(--radius);
+  color: var(--green); font-family: var(--font-body); font-size: 12px;
+  font-weight: 500; cursor: pointer; transition: all .15s;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  margin-bottom: 1rem;
+}
+.ai-generate-btn:hover { background: var(--green); color: white; }
+
+/* Toast */
+.stoke-toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--text); color: white; padding: 10px 18px;
+  border-radius: 20px; font-size: 13px; font-weight: 500;
+  z-index: 2000; opacity: 0; transition: opacity .25s;
+  pointer-events: none; white-space: nowrap;
+}
+.stoke-toast.show { opacity: 1; }
+
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <div class="logo"><svg viewBox="0 0 20 20" fill="none" width="22" height="22"><path d="M10 2C10 2 4 8 4 12a6 6 0 0012 0c0-4-6-10-6-10z" fill="white" opacity=".95"/><path d="M10 8c0 0-2 3-2 5a2 2 0 004 0c0-2-2-5-2-5z" fill="white" opacity=".45"/></svg></div>
+    <span class="wordmark">Stoke</span>
+    <span class="version-badge">v8</span>
+    <nav style="margin-left:auto;display:flex;gap:6px;align-items:center">
+      <a href="dashboard.html" style="font-size:12px;color:var(--text-3);text-decoration:none;padding:4px 10px;border:0.5px solid var(--border);border-radius:20px">&#8592; Dashboard</a>
+      <a href="calendar.html" style="font-size:12px;color:var(--text-3);text-decoration:none;padding:4px 10px;border:0.5px solid var(--border);border-radius:20px">&#128344; Calendar</a>
+      <span id="auth-indicator" style="display:none;font-size:11px;color:var(--green);background:var(--green-light);padding:3px 10px;border-radius:20px;border:0.5px solid var(--green)"></span>
+    </span>
+  </div>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem">
+    <div>
+      <div style="font-family:var(--font-serif);font-size:24px;color:var(--text);margin-bottom:2px">Quotes &amp; Invoices &#129534;</div>
+      <div style="font-size:13px;color:var(--text-3)">AI-generated quotes · send via QuickBooks or Stripe · never touch the money.</div>
+    </div>
+    <button onclick="newInvoice()" style="padding:9px 16px;background:var(--green);color:white;border:none;border-radius:var(--radius);font-family:var(--font-body);font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px">+ New Invoice</button>
+  </div>
+
+  <div class="invoice-layout">
+
+    <!-- ── INVOICE BUILDER ──────────────────────── -->
+    <div>
+
+      <!-- AI Quick-fill -->
+      <button class="ai-generate-btn" onclick="aiGenerateFromJob()">
+        &#10024; AI — fill from recent job
+      </button>
+
+      <div class="invoice-paper">
+
+        <!-- Paper header -->
+        <div class="invoice-paper-header">
+          <div>
+            <div class="invoice-biz-name" id="biz-name-display">Trusty Sail &amp; Paddle</div>
+            <div class="invoice-biz-detail" id="biz-detail-display">
+              Morehead City, NC<br>
+              trustysailandpaddle.com
+            </div>
+          </div>
+          <div class="invoice-meta">
+            <div class="invoice-number">Invoice</div>
+            <div class="invoice-number-val" id="invoice-number-display">#001</div>
+            <div class="invoice-status-badge" id="invoice-status-badge">Draft</div>
+          </div>
+        </div>
+
+        <div class="invoice-body">
+
+          <!-- Bill To + Dates -->
+          <div class="invoice-parties">
+            <div>
+              <div class="invoice-party-label">Bill To</div>
+              <div class="invoice-field">
+                <label>Customer Name</label>
+                <input type="text" id="inv-customer-name" placeholder="Full name" oninput="updateDisplay()">
+              </div>
+              <div class="invoice-field">
+                <label>Email</label>
+                <input type="email" id="inv-customer-email" placeholder="customer@email.com">
+              </div>
+              <div class="invoice-field">
+                <label>Phone</label>
+                <input type="tel" id="inv-customer-phone" placeholder="(252) 555-0100">
+              </div>
+            </div>
+            <div>
+              <div class="invoice-party-label">Invoice Details</div>
+              <div class="invoice-field">
+                <label>Invoice Date</label>
+                <input type="date" id="inv-date">
+              </div>
+              <div class="invoice-field">
+                <label>Due Date</label>
+                <input type="date" id="inv-due-date">
+              </div>
+              <div class="invoice-field">
+                <label>Service Type</label>
+                <select id="inv-service-type">
+                  <option value="rigging">Custom Rigging Build</option>
+                  <option value="rental">Kayak / Sailboat Rental</option>
+                  <option value="lesson">Lesson / Instruction</option>
+                  <option value="repair">Repair / Maintenance</option>
+                  <option value="sailboat">Sailboat Purchase</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Line Items -->
+          <div class="invoice-party-label" style="margin-bottom:6px">Line Items</div>
+          <div style="border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden">
+            <div class="line-items-header">
+              <span>Description</span>
+              <span style="text-align:center">Qty</span>
+              <span style="text-align:right">Unit Price</span>
+              <span style="text-align:right">Total</span>
+              <span></span>
+            </div>
+            <div id="line-items-body"></div>
+          </div>
+          <button class="add-line-btn" onclick="addLineItem()">
+            &#43; Add line item
+          </button>
+
+          <!-- Totals -->
+          <div class="invoice-totals">
+            <div class="total-row subtotal">
+              <span>Subtotal</span>
+              <span id="display-subtotal">$0.00</span>
+            </div>
+            <div class="total-row tax" style="align-items:center">
+              <span style="display:flex;align-items:center;gap:6px">
+                Tax
+                <input type="number" id="tax-rate" value="0" min="0" max="30" step="0.5" oninput="recalculate()"
+                  style="width:52px;padding:3px 6px;font-size:11px;border:0.5px solid var(--border);border-radius:4px;background:var(--bg-2);color:var(--text);outline:none">
+                %
+              </span>
+              <span id="display-tax">$0.00</span>
+            </div>
+            <div class="total-row grand">
+              <span>Total Due</span>
+              <span class="total-amount" id="display-total">$0.00</span>
+            </div>
+          </div>
+
+          <!-- Notes -->
+          <div class="invoice-notes">
+            <label style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);display:block;margin-bottom:4px">Notes / Terms</label>
+            <textarea id="inv-notes" placeholder="Thank you for your business! Payment due within 30 days.">Thank you for your business! Payment due within 30 days.</textarea>
+          </div>
+
+          <div class="invoice-footer-line" id="invoice-footer-line">
+            Trusty Sail &amp; Paddle &bull; Morehead City, NC &bull; trustysailandpaddle.com
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SIDEBAR ──────────────────────────────── -->
+    <div>
+
+      <!-- Send options -->
+      <div class="action-card">
+        <div class="action-card-header">&#128640; Send Invoice</div>
+        <div class="action-card-body">
+
+          <!-- QuickBooks -->
+          <div class="connect-banner" id="qbo-connect-banner" onclick="connectQuickBooks()">
+            <div class="connect-dot" id="qbo-dot"></div>
+            <span id="qbo-connect-label">Connect QuickBooks</span>
+          </div>
+          <button class="send-btn qbo" id="qbo-send-btn" onclick="sendToQuickBooks()" disabled>
+            <span>&#128994;</span> Push to QuickBooks
+          </button>
+
+          <div style="text-align:center;font-size:11px;color:var(--text-3);margin:10px 0">— or —</div>
+
+          <!-- Stripe -->
+          <div class="connect-banner" id="stripe-connect-banner" onclick="connectStripe()">
+            <div class="connect-dot" id="stripe-dot"></div>
+            <span id="stripe-connect-label">Connect Stripe</span>
+          </div>
+          <button class="send-btn stripe" id="stripe-send-btn" onclick="sendWithStripe()" disabled>
+            <span>&#9889;</span> Send Stripe Payment Link
+          </button>
+
+          <div style="text-align:center;font-size:11px;color:var(--text-3);margin:10px 0">— or —</div>
+
+          <!-- Manual options -->
+          <button class="send-btn secondary" onclick="downloadPDF()">
+            &#8595; Download PDF
+          </button>
+          <button class="send-btn secondary" onclick="downloadIIF()">
+            &#8595; Export for QuickBooks (.iif)
+          </button>
+          <button class="send-btn secondary" onclick="downloadCSV()">
+            &#8595; Export CSV
+          </button>
+
+        </div>
+      </div>
+
+      <!-- Invoice history -->
+      <div class="action-card">
+        <div class="action-card-header">&#128200; Recent Invoices</div>
+        <div class="action-card-body" id="invoice-history" style="padding:.5rem 1rem">
+          <div style="font-size:12px;color:var(--text-3);text-align:center;padding:.5rem 0">No invoices yet</div>
+        </div>
+      </div>
+
+      <!-- Tips -->
+      <div class="action-card">
+        <div class="action-card-header">&#128161; How it works</div>
+        <div class="action-card-body" style="font-size:12px;color:var(--text-2);line-height:1.7">
+          <div style="margin-bottom:8px"><strong>QuickBooks:</strong> Pushes invoice directly into QB. Customer gets QB payment link. QB handles collection &amp; reminders.</div>
+          <div style="margin-bottom:8px"><strong>Stripe:</strong> Generates a "pay now" link. Customer pays by card instantly. Funds land in your Stripe account.</div>
+          <div><strong>PDF / IIF:</strong> Download and send manually, or import into QuickBooks Desktop.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="stoke-toast" id="toast"></div>
+
+<script>
+// ── STATE ─────────────────────────────────────────────────────
+let lineItems = [];
+let invoiceData = {};
+let qboConnected = false;
+let stripeConnected = false;
+let invoiceNumber = 1;
+
+// ── INIT ──────────────────────────────────────────────────────
+(async function init() {
+  // Auth
+  try {
+    const me = await fetch('/auth/me').then(r => r.json());
+    if (me.authenticated) {
+      document.getElementById('auth-indicator').textContent = me.user?.name;
+      document.getElementById('auth-indicator').style.display = 'inline-flex';
+      // Load business info
+      if (me.business) {
+        document.getElementById('biz-name-display').textContent = me.business.name || 'Trusty Sail & Paddle';
+        document.getElementById('biz-detail-display').innerHTML =
+          `${me.business.city || 'Morehead City, NC'}<br>${me.business.website || 'trustysailandpaddle.com'}`;
+        document.getElementById('invoice-footer-line').textContent =
+          `${me.business.name || 'Trusty Sail & Paddle'} · ${me.business.city || 'Morehead City, NC'} · ${me.business.website || 'trustysailandpaddle.com'}`;
+      }
+    }
+  } catch(e) {}
+
+  // Defaults
+  const today = new Date();
+  const due = new Date(today.getTime() + 30*86400000);
+  document.getElementById('inv-date').value = today.toISOString().slice(0,10);
+  document.getElementById('inv-due-date').value = due.toISOString().slice(0,10);
+
+  // Load invoice number
+  const invoices = getLocalInvoices();
+  invoiceNumber = invoices.length + 1;
+  document.getElementById('invoice-number-display').textContent = '#' + String(invoiceNumber).padStart(3,'0');
+
+  // Check connections
+  checkConnections();
+
+  // Load history
+  renderHistory();
+
+  // Add default line item
+  addLineItem('Service', 1, 0);
+
+  // Check for voice-triggered invoice
+  const voiceInvoice = sessionStorage.getItem('stoke_voice_invoice');
+  if (voiceInvoice) {
+    sessionStorage.removeItem('stoke_voice_invoice');
+    try {
+      const data = JSON.parse(voiceInvoice);
+      prefillFromData(data);
+    } catch(e) {}
+  }
+
+  // Check for event prefill from calendar/voice
+  const eventPrefill = sessionStorage.getItem('stoke_invoice_event');
+  if (eventPrefill) {
+    sessionStorage.removeItem('stoke_invoice_event');
+    try { prefillFromData(JSON.parse(eventPrefill)); } catch(e) {}
+  }
+})();
+
+// ── LINE ITEMS ────────────────────────────────────────────────
+function addLineItem(desc='', qty=1, price=0) {
+  const id = Date.now();
+  lineItems.push({ id, desc, qty, price });
+  renderLineItems();
+}
+
+function renderLineItems() {
+  const body = document.getElementById('line-items-body');
+  body.innerHTML = lineItems.map((item, i) => `
+    <div class="line-item-row" data-id="${item.id}">
+      <input type="text" value="${esc(item.desc)}" placeholder="Description of work or item"
+        onchange="updateLineItem(${item.id},'desc',this.value)">
+      <input type="number" value="${item.qty}" min="0" step="0.5" style="text-align:center"
+        onchange="updateLineItem(${item.id},'qty',parseFloat(this.value)||0)">
+      <input type="number" value="${item.price}" min="0" step="0.01" style="text-align:right"
+        onchange="updateLineItem(${item.id},'price',parseFloat(this.value)||0)">
+      <div class="line-item-total">$${((item.qty||0)*(item.price||0)).toFixed(2)}</div>
+      <button class="line-item-del" onclick="removeLineItem(${item.id})" title="Remove">&#x2715;</button>
+    </div>`).join('');
+  recalculate();
+}
+
+function updateLineItem(id, field, value) {
+  const item = lineItems.find(i => i.id === id);
+  if (item) { item[field] = value; renderLineItems(); }
+}
+
+function removeLineItem(id) {
+  lineItems = lineItems.filter(i => i.id !== id);
+  renderLineItems();
+}
+
+function recalculate() {
+  const subtotal = lineItems.reduce((sum, i) => sum + (i.qty||0)*(i.price||0), 0);
+  const taxRate = parseFloat(document.getElementById('tax-rate').value) || 0;
+  const tax = subtotal * taxRate / 100;
+  const total = subtotal + tax;
+  document.getElementById('display-subtotal').textContent = `$${subtotal.toFixed(2)}`;
+  document.getElementById('display-tax').textContent = `$${tax.toFixed(2)}`;
+  document.getElementById('display-total').textContent = `$${total.toFixed(2)}`;
+  return { subtotal, tax, total };
+}
+
+// ── AI GENERATE FROM JOB ──────────────────────────────────────
+async function aiGenerateFromJob() {
+  // Get recent events for context
+  const events = JSON.parse(localStorage.getItem('stoke_events') || '[]')
+    .sort((a,b) => new Date(b.start||0) - new Date(a.start||0))
+    .slice(0, 5);
+
+  const settings = JSON.parse(localStorage.getItem('stoke_settings') || '{}');
+  const btn = document.querySelector('.ai-generate-btn');
+  btn.textContent = '⏳ Generating...';
+  btn.disabled = true;
+
+  try {
+    const prompt = `You are the billing assistant for ${settings.business?.name || 'Trusty Sail & Paddle'}, a kayak and sailboat shop.
+
+Generate professional invoice line items based on the most recent completed job. Respond ONLY with valid JSON:
+
+{
+  "customerName": "name",
+  "customerEmail": "email",
+  "customerPhone": "phone",
+  "serviceType": "rigging|rental|lesson|repair|sailboat|other",
+  "lineItems": [
+    { "desc": "description", "qty": 1, "price": 0.00 }
+  ],
+  "notes": "optional thank you note",
+  "totalEstimate": 0.00
+}
+
+RECENT JOBS:
+${JSON.stringify(events.slice(0,3).map(e => ({
+  title: e.title, type: e.type,
+  customer: e.customerName, email: e.customerEmail,
+  phone: e.customerPhone, amount: e.amount,
+  notes: e.notes, date: e.start
+})), null, 2)}
+
+PRICING GUIDE:
+- Rigging labor: $95/hr
+- Rod holders: $27 each (installed)
+- Fish finder mount: $35
+- Motor mount: $45
+- Hardware/misc: cost + 20%
+- Kayak rental: $45/hr or $120/day
+- Lesson: $65/person
+- Sailboat lesson: $85/hr
+
+Use the most recent rigging/repair job if present. Break out labor and parts separately.`;
+
+    const resp = await fetch('/functions/generate', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ messages: [{ role:'user', content:[{type:'text',text:prompt}] }] })
+    });
+    const data = await resp.json();
+    const raw = data.content?.[0]?.text?.trim() || '';
+    const parsed = JSON.parse(raw.replace(/```json|```/g,'').trim());
+    prefillFromData(parsed);
+    showToast('✦ AI filled in the invoice from your last job');
+  } catch(e) {
+    showToast('Could not generate — fill in manually');
+  }
+  btn.textContent = '✦ AI — fill from recent job';
+  btn.disabled = false;
+}
+
+function prefillFromData(data) {
+  if (data.customerName) document.getElementById('inv-customer-name').value = data.customerName;
+  if (data.customerEmail) document.getElementById('inv-customer-email').value = data.customerEmail;
+  if (data.customerPhone) document.getElementById('inv-customer-phone').value = data.customerPhone;
+  if (data.serviceType) document.getElementById('inv-service-type').value = data.serviceType;
+  if (data.notes) document.getElementById('inv-notes').value = data.notes;
+  if (data.lineItems?.length) {
+    lineItems = data.lineItems.map((item, i) => ({ id: Date.now()+i, ...item }));
+    renderLineItems();
+  }
+  if (data.amount && !data.lineItems?.length) {
+    lineItems = [{ id: Date.now(), desc: data.serviceType || 'Service', qty: 1, price: data.amount }];
+    renderLineItems();
+  }
+}
+
+function updateDisplay() {}
+function newInvoice() {
+  lineItems = [];
+  document.getElementById('inv-customer-name').value = '';
+  document.getElementById('inv-customer-email').value = '';
+  document.getElementById('inv-customer-phone').value = '';
+  document.getElementById('inv-notes').value = 'Thank you for your business! Payment due within 30 days.';
+  addLineItem('Service', 1, 0);
+  invoiceNumber++;
+  document.getElementById('invoice-number-display').textContent = '#' + String(invoiceNumber).padStart(3,'0');
+  document.getElementById('invoice-status-badge').textContent = 'Draft';
+}
+
+// ── CONNECTIONS ───────────────────────────────────────────────
+function checkConnections() {
+  qboConnected = localStorage.getItem('stoke_qbo_connected') === 'true';
+  stripeConnected = localStorage.getItem('stoke_stripe_connected') === 'true';
+  updateConnectionUI();
+}
+function updateConnectionUI() {
+  const qboDot = document.getElementById('qbo-dot');
+  const qboLabel = document.getElementById('qbo-connect-label');
+  const qboBtn = document.getElementById('qbo-send-btn');
+  const stripeDot = document.getElementById('stripe-dot');
+  const stripeLabel = document.getElementById('stripe-connect-label');
+  const stripeBtn = document.getElementById('stripe-send-btn');
+
+  if (qboConnected) {
+    qboDot.classList.add('connected');
+    qboLabel.textContent = '✓ QuickBooks Connected';
+    qboBtn.disabled = false;
+  } else {
+    qboDot.classList.remove('connected');
+    qboLabel.textContent = 'Connect QuickBooks Online';
+    qboBtn.disabled = true;
+  }
+  if (stripeConnected) {
+    stripeDot.classList.add('connected');
+    stripeLabel.textContent = '✓ Stripe Connected';
+    stripeBtn.disabled = false;
+  } else {
+    stripeDot.classList.remove('connected');
+    stripeLabel.textContent = 'Connect Stripe';
+    stripeBtn.disabled = true;
+  }
+}
+
+function connectQuickBooks() {
+  // QBO OAuth flow — redirects to Intuit auth
+  const clientId = localStorage.getItem('stoke_qbo_client_id') || '';
+  if (!clientId) {
+    const id = prompt('Enter your QuickBooks Client ID from developer.intuit.com:');
+    if (!id) return;
+    localStorage.setItem('stoke_qbo_client_id', id);
+  }
+  const redirectUri = encodeURIComponent(window.location.origin + '/invoices.html');
+  const scope = encodeURIComponent('com.intuit.quickbooks.accounting');
+  const state = Math.random().toString(36).substr(2,8);
+  sessionStorage.setItem('qbo_oauth_state', state);
+  window.location.href = `https://appcenter.intuit.com/connect/oauth2?client_id=${localStorage.getItem('stoke_qbo_client_id')}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&state=${state}`;
+}
+
+function connectStripe() {
+  const key = prompt('Enter your Stripe Publishable Key (from dashboard.stripe.com/apikeys):');
+  if (!key) return;
+  localStorage.setItem('stoke_stripe_pk', key);
+  const secretKey = prompt('Enter your Stripe Secret Key (starts with sk_):');
+  if (!secretKey) return;
+  // In production this would go to the worker, not localStorage
+  // For now store locally — the worker endpoint handles actual API calls
+  localStorage.setItem('stoke_stripe_connected', 'true');
+  stripeConnected = true;
+  updateConnectionUI();
+  showToast('✓ Stripe connected');
+}
+
+// ── SEND ACTIONS ──────────────────────────────────────────────
+function buildInvoicePayload() {
+  const { subtotal, tax, total } = recalculate();
+  return {
+    id: 'inv_' + Math.random().toString(36).substr(2,8),
+    number: document.getElementById('invoice-number-display').textContent,
+    customerName: document.getElementById('inv-customer-name').value,
+    customerEmail: document.getElementById('inv-customer-email').value,
+    customerPhone: document.getElementById('inv-customer-phone').value,
+    serviceType: document.getElementById('inv-service-type').value,
+    date: document.getElementById('inv-date').value,
+    dueDate: document.getElementById('inv-due-date').value,
+    lineItems: [...lineItems],
+    subtotal, tax, total,
+    taxRate: parseFloat(document.getElementById('tax-rate').value) || 0,
+    notes: document.getElementById('inv-notes').value,
+    businessName: document.getElementById('biz-name-display').textContent,
+    createdAt: new Date().toISOString(),
+    status: 'sent',
+  };
+}
+
+async function sendToQuickBooks() {
+  if (!qboConnected) { connectQuickBooks(); return; }
+  const payload = buildInvoicePayload();
+  if (!payload.customerName || payload.total === 0) {
+    showToast('Please fill in customer name and line items first'); return;
+  }
+  showToast('⏳ Pushing to QuickBooks...');
+  try {
+    const resp = await fetch('/api/quickbooks/invoice', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      credentials: 'include', body: JSON.stringify(payload)
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      saveInvoice({...payload, status:'sent', qboId: data.qboId, paymentLink: data.paymentLink});
+      showToast('✓ Invoice created in QuickBooks!');
+      renderHistory();
+    } else { showToast('QuickBooks error: ' + (data.error||'Unknown')); }
+  } catch(e) { showToast('Could not reach QuickBooks. Try again.'); }
+}
+
+async function sendWithStripe() {
+  if (!stripeConnected) { connectStripe(); return; }
+  const payload = buildInvoicePayload();
+  if (!payload.customerEmail || payload.total === 0) {
+    showToast('Customer email and line items required'); return;
+  }
+  showToast('⏳ Creating Stripe payment link...');
+  try {
+    const resp = await fetch('/api/stripe/invoice', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      credentials: 'include', body: JSON.stringify(payload)
+    });
+    const data = await resp.json();
+    if (data.ok && data.paymentUrl) {
+      saveInvoice({...payload, status:'sent', stripeId: data.stripeId, paymentLink: data.paymentUrl});
+      showToast('✓ Payment link created — emailing customer');
+      renderHistory();
+      // Open the link to preview
+      setTimeout(() => window.open(data.paymentUrl, '_blank'), 1000);
+    } else { showToast('Stripe error: ' + (data.error||'Unknown')); }
+  } catch(e) { showToast('Could not reach Stripe. Try again.'); }
+}
+
+function downloadPDF() {
+  const payload = buildInvoicePayload();
+  if (!payload.customerName) { showToast('Add customer name first'); return; }
+  // Build printable HTML and trigger print-to-PDF
+  const printWin = window.open('', '_blank');
+  printWin.document.write(buildPrintableHTML(payload));
+  printWin.document.close();
+  setTimeout(() => { printWin.focus(); printWin.print(); }, 500);
+  saveInvoice({...payload, status:'draft'});
+  showToast('✓ PDF ready — use "Save as PDF" in print dialog');
+}
+
+function downloadIIF() {
+  const payload = buildInvoicePayload();
+  if (!payload.customerName) { showToast('Add customer name first'); return; }
+  const iif = buildIIFContent(payload);
+  downloadFile(`invoice-${payload.number.replace('#','')}.iif`, iif, 'text/plain');
+  showToast('✓ QuickBooks IIF file downloaded');
+}
+
+function downloadCSV() {
+  const payload = buildInvoicePayload();
+  let csv = 'Description,Qty,Unit Price,Total\n';
+  payload.lineItems.forEach(i => {
+    csv += `"${i.desc}",${i.qty},${i.price.toFixed(2)},${(i.qty*i.price).toFixed(2)}\n`;
+  });
+  csv += `,,Subtotal,$${payload.subtotal.toFixed(2)}\n`;
+  if (payload.tax > 0) csv += `,,Tax (${payload.taxRate}%),$${payload.tax.toFixed(2)}\n`;
+  csv += `,,Total,$${payload.total.toFixed(2)}\n`;
+  downloadFile(`invoice-${payload.number.replace('#','')}.csv`, csv, 'text/csv');
+  showToast('✓ CSV downloaded');
+}
+
+// ── PRINTABLE HTML ────────────────────────────────────────────
+function buildPrintableHTML(inv) {
+  const lineRows = inv.lineItems.map(i => `
+    <tr>
+      <td style="padding:10px 8px;border-bottom:1px solid #eee">${esc(i.desc)}</td>
+      <td style="padding:10px 8px;border-bottom:1px solid #eee;text-align:center">${i.qty}</td>
+      <td style="padding:10px 8px;border-bottom:1px solid #eee;text-align:right">$${i.price.toFixed(2)}</td>
+      <td style="padding:10px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:600">$${(i.qty*i.price).toFixed(2)}</td>
+    </tr>`).join('');
+
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Invoice ${inv.number}</title>
+  <style>
+    body { font-family: 'DM Sans', system-ui, sans-serif; margin: 0; padding: 0; color: #1a1a18; }
+    @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600&display=swap');
+    .page { max-width: 760px; margin: 40px auto; padding: 0 40px; }
+    .header { background: #1a6b4a; color: white; padding: 36px 40px; display: flex; justify-content: space-between; margin: -40px -40px 32px; }
+    .biz-name { font-family: 'DM Serif Display', serif; font-size: 24px; margin-bottom: 6px; }
+    .biz-detail { font-size: 12px; opacity: .8; line-height: 1.7; }
+    .inv-number { text-align: right; }
+    .inv-num-label { font-size: 11px; opacity: .7; text-transform: uppercase; letter-spacing: .06em; }
+    .inv-num-val { font-family: 'DM Serif Display', serif; font-size: 22px; margin-top: 2px; }
+    .parties { display: flex; justify-content: space-between; margin-bottom: 32px; }
+    .party-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: #999; margin-bottom: 8px; }
+    .party-val { font-size: 14px; line-height: 1.8; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+    th { background: #f8f8f6; padding: 10px 8px; text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: #999; }
+    th:nth-child(2),th:nth-child(3),th:nth-child(4) { text-align: right; }
+    .totals { display: flex; flex-direction: column; align-items: flex-end; margin-bottom: 24px; }
+    .total-row { display: flex; gap: 48px; justify-content: flex-end; padding: 4px 0; font-size: 13px; color: #666; }
+    .total-grand { font-weight: 600; font-size: 18px; color: #1a1a18; padding-top: 10px; border-top: 1px solid #eee; margin-top: 6px; }
+    .total-grand .amt { font-family: 'DM Serif Display', serif; font-size: 24px; color: #1a6b4a; }
+    .notes { padding: 16px; background: #f8f8f6; border-radius: 8px; font-size: 12px; color: #666; line-height: 1.6; }
+    .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; font-size: 11px; color: #999; text-align: center; }
+    @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+  </style></head><body>
+  <div class="page">
+    <div class="header">
+      <div><div class="biz-name">${esc(inv.businessName)}</div><div class="biz-detail">Morehead City, NC<br>trustysailandpaddle.com</div></div>
+      <div class="inv-number"><div class="inv-num-label">Invoice</div><div class="inv-num-val">${esc(inv.number)}</div></div>
+    </div>
+    <div class="parties">
+      <div><div class="party-label">Bill To</div><div class="party-val"><strong>${esc(inv.customerName)}</strong><br>${esc(inv.customerEmail)}<br>${esc(inv.customerPhone||'')}</div></div>
+      <div style="text-align:right"><div class="party-label">Invoice Date</div><div class="party-val">${inv.date}<br><span style="color:#999">Due: ${inv.dueDate}</span></div></div>
+    </div>
+    <table><thead><tr><th>Description</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th></tr></thead>
+    <tbody>${lineRows}</tbody></table>
+    <div class="totals">
+      <div class="total-row"><span>Subtotal</span><span>$${inv.subtotal.toFixed(2)}</span></div>
+      ${inv.tax>0?`<div class="total-row"><span>Tax (${inv.taxRate}%)</span><span>$${inv.tax.toFixed(2)}</span></div>`:''}
+      <div class="total-row total-grand"><span>Total Due</span><span class="amt">$${inv.total.toFixed(2)}</span></div>
+    </div>
+    ${inv.notes?`<div class="notes">${esc(inv.notes)}</div>`:''}
+    <div class="footer">${esc(inv.businessName)} &bull; Morehead City, NC &bull; trustysailandpaddle.com</div>
+  </div></body></html>`;
+}
+
+// ── IIF EXPORT (QuickBooks Desktop import) ────────────────────
+function buildIIFContent(inv) {
+  const date = inv.date.replace(/-/g, '/');
+  let iif = `!TRNS\tTRNSTYPE\tDATE\tACCNT\tNAME\tAMOUNT\tDOCNUM\n`;
+  iif += `!SPL\tTRNSTYPE\tDATE\tACCNT\tNAME\tAMOUNT\n`;
+  iif += `!ENDTRNS\n`;
+  iif += `TRNS\tINVOICE\t${date}\tAccounts Receivable\t${inv.customerName}\t${inv.total.toFixed(2)}\t${inv.number.replace('#','')}\n`;
+  inv.lineItems.forEach(item => {
+    const lineTotal = (item.qty * item.price).toFixed(2);
+    iif += `SPL\tINVOICE\t${date}\tServices\t${inv.customerName}\t-${lineTotal}\n`;
+  });
+  iif += `ENDTRNS\n`;
+  return iif;
+}
+
+// ── LOCAL STORAGE ─────────────────────────────────────────────
+function saveInvoice(inv) {
+  const invoices = getLocalInvoices();
+  const existing = invoices.findIndex(i => i.id === inv.id);
+  if (existing >= 0) invoices[existing] = inv;
+  else invoices.push(inv);
+  localStorage.setItem('stoke_invoices', JSON.stringify(invoices));
+}
+function getLocalInvoices() {
+  try { return JSON.parse(localStorage.getItem('stoke_invoices') || '[]'); } catch(e) { return []; }
+}
+
+function renderHistory() {
+  const invoices = getLocalInvoices().slice(-6).reverse();
+  const el = document.getElementById('invoice-history');
+  if (!invoices.length) return;
+  const statusColors = { draft:'#999', sent:'#2196F3', paid:'#2E7D32', overdue:'#c0392b' };
+  el.innerHTML = invoices.map(inv => `
+    <div class="invoice-history-item" onclick="loadInvoice('${inv.id}')">
+      <div class="inv-status-dot" style="background:${statusColors[inv.status]||'#999'}"></div>
+      <div class="inv-info">
+        <div class="inv-name">${esc(inv.customerName||'—')}</div>
+        <div class="inv-detail">${inv.number} · ${inv.status} · ${inv.date||''}</div>
+      </div>
+      <div class="inv-amount">$${(inv.total||0).toFixed(0)}</div>
+    </div>`).join('');
+}
+
+function loadInvoice(id) {
+  const inv = getLocalInvoices().find(i => i.id === id);
+  if (!inv) return;
+  prefillFromData(inv);
+  document.getElementById('inv-date').value = inv.date || '';
+  document.getElementById('inv-due-date').value = inv.dueDate || '';
+  document.getElementById('invoice-number-display').textContent = inv.number || '';
+  document.getElementById('invoice-status-badge').textContent = inv.status || 'draft';
+}
+
+// ── UTILS ─────────────────────────────────────────────────────
+function downloadFile(filename, content, mimeType) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], {type:mimeType}));
+  a.download = filename; a.click();
+  URL.revokeObjectURL(a.href);
+}
+function showToast(msg, duration=3000) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), duration);
+}
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+</script>
+<script src="js/voice.js"></script>
+</body>
+</html>

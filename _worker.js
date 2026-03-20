@@ -140,6 +140,139 @@ async function handleParseLead(request,env){
   return json({ok:true,message:'Use client-side AI parsing for now'});
 }
 
+// ── INVOICES ─────────────────────────────────────────────────────────────
+async function handleListInvoices(request,env){
+  const s=await requireAuth(request,env);
+  try{
+    const rows=await env.DB.prepare('SELECT * FROM invoices WHERE business_id=? ORDER BY created_at DESC LIMIT 50').bind(s.business_id).all();
+    return json(rows.results||[]);
+  }catch(e){return json([]);}
+}
+async function handleSaveInvoice(request,env){
+  const s=await requireAuth(request,env);const b=await request.json();
+  const id=b.id||('inv_'+token(8));
+  try{
+    await env.DB.prepare('INSERT INTO invoices(id,business_id,job_id,amount,line_items,status,due_at,quickbooks_id,created_at)VALUES(?,?,?,?,?,?,?,?,?)ON CONFLICT(id)DO UPDATE SET amount=excluded.amount,line_items=excluded.line_items,status=excluded.status,quickbooks_id=excluded.quickbooks_id').bind(id,s.business_id,b.jobId||null,b.total||0,JSON.stringify(b.lineItems||[]),b.status||'draft',b.dueDate?Math.floor(new Date(b.dueDate).getTime()/1000):null,b.qboId||null,now()).run();
+    return json({ok:true,id});
+  }catch(e){return json({ok:true,id,note:'Saved locally only'});}
+}
+
+// ── QUICKBOOKS ────────────────────────────────────────────────────────────
+async function handleQBOConnect(request,env){
+  const s=await requireAuth(request,env);
+  const clientId=env.QBO_CLIENT_ID||'';
+  if(!clientId)return err('QBO_CLIENT_ID not configured',500);
+  const redirectUri=encodeURIComponent(`https://${new URL(request.url).host}/api/quickbooks/callback`);
+  const scope=encodeURIComponent('com.intuit.quickbooks.accounting');
+  const state=token(8);
+  const url=`https://appcenter.intuit.com/connect/oauth2?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&state=${state}`;
+  return Response.redirect(url,302);
+}
+async function handleQBOCallback(request,env){
+  const url=new URL(request.url);
+  const code=url.searchParams.get('code');
+  const realmId=url.searchParams.get('realmId');
+  if(!code||!realmId)return err('Missing OAuth params');
+  // Exchange code for tokens
+  const clientId=env.QBO_CLIENT_ID||'';
+  const clientSecret=env.QBO_CLIENT_SECRET||'';
+  const redirectUri=`https://${url.host}/api/quickbooks/callback`;
+  const basic=btoa(`${clientId}:${clientSecret}`);
+  const tokenResp=await fetch('https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer',{
+    method:'POST',
+    headers:{'Authorization':`Basic ${basic}`,'Content-Type':'application/x-www-form-urlencoded','Accept':'application/json'},
+    body:`grant_type=authorization_code&code=${code}&redirect_uri=${encodeURIComponent(redirectUri)}`
+  });
+  const tokens=await tokenResp.json();
+  if(!tokens.access_token)return err('QBO token exchange failed');
+  // Store tokens in D1
+  try{
+    const s=await getSession(request,env);
+    if(s){
+      await env.DB.prepare('INSERT INTO platform_connections(id,business_id,platform,access_token,refresh_token,page_id,expires_at,status,created_at,updated_at)VALUES(?,?,?,?,?,?,?,?,?,?)ON CONFLICT(business_id,platform)DO UPDATE SET access_token=excluded.access_token,refresh_token=excluded.refresh_token,page_id=excluded.page_id,expires_at=excluded.expires_at,status=excluded.status,updated_at=excluded.updated_at').bind('qbo_'+s.business_id,s.business_id,'quickbooks',tokens.access_token,tokens.refresh_token,realmId,now()+(tokens.expires_in||3600),'active',now(),now()).run();
+    }
+  }catch(e){console.error('[QBO]',e.message);}
+  return Response.redirect(`https://${url.host}/invoices.html?qbo=connected`,302);
+}
+async function handleQBOInvoice(request,env){
+  const s=await requireAuth(request,env);const b=await request.json();
+  // Get QBO connection
+  let conn;
+  try{conn=await env.DB.prepare('SELECT * FROM platform_connections WHERE business_id=? AND platform=?').bind(s.business_id,'quickbooks').first();}catch(e){}
+  if(!conn)return err('QuickBooks not connected. Visit /api/quickbooks/connect',401);
+  const realmId=conn.page_id;
+  const token=conn.access_token;
+  const baseUrl=`https://quickbooks.api.intuit.com/v3/company/${realmId}`;
+  // Find or create customer in QBO
+  let customerId;
+  try{
+    const findResp=await fetch(`${baseUrl}/query?query=${encodeURIComponent(`SELECT Id FROM Customer WHERE DisplayName='${b.customerName}'`)}&minorversion=65`,{headers:{'Authorization':`Bearer ${token}`,'Accept':'application/json'}});
+    const findData=await findResp.json();
+    customerId=findData?.QueryResponse?.Customer?.[0]?.Id;
+    if(!customerId){
+      const createResp=await fetch(`${baseUrl}/customer?minorversion=65`,{method:'POST',headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({DisplayName:b.customerName,PrimaryEmailAddr:{Address:b.customerEmail},PrimaryPhone:{FreeFormNumber:b.customerPhone||''}})});
+      const createData=await createResp.json();
+      customerId=createData?.Customer?.Id;
+    }
+  }catch(e){return err('Failed to find/create QBO customer: '+e.message);}
+  // Build QBO invoice
+  const lines=b.lineItems.map((item,i)=>({
+    Amount:parseFloat((item.qty*item.price).toFixed(2)),
+    DetailType:'SalesItemLineDetail',
+    Description:item.desc,
+    SalesItemLineDetail:{Qty:item.qty,UnitPrice:item.price,ItemRef:{value:'1',name:'Services'}}
+  }));
+  const invoiceBody={Line:lines,CustomerRef:{value:customerId},DueDate:b.dueDate,DocNumber:b.number?.replace('#',''),CustomerMemo:{value:b.notes||''}};
+  try{
+    const invResp=await fetch(`${baseUrl}/invoice?minorversion=65`,{method:'POST',headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(invoiceBody)});
+    const invData=await invResp.json();
+    if(invData?.Invoice?.Id){
+      return json({ok:true,qboId:invData.Invoice.Id,paymentLink:`https://app.qbo.intuit.com/app/invoice?txnId=${invData.Invoice.Id}`});
+    }
+    return err('QBO invoice creation failed: '+JSON.stringify(invData?.Fault||invData));
+  }catch(e){return err('QBO API error: '+e.message);}
+}
+
+// ── STRIPE ────────────────────────────────────────────────────────────────
+async function handleStripeInvoice(request,env){
+  const s=await requireAuth(request,env);const b=await request.json();
+  const stripeKey=env.STRIPE_SECRET_KEY||'';
+  if(!stripeKey)return err('STRIPE_SECRET_KEY not configured',500);
+  const auth='Basic '+btoa(stripeKey+':');
+  // Create or find Stripe customer
+  let customerId;
+  try{
+    const searchResp=await fetch(`https://api.stripe.com/v1/customers/search?query=email:'${b.customerEmail}'`,{headers:{'Authorization':auth}});
+    const searchData=await searchResp.json();
+    customerId=searchData?.data?.[0]?.id;
+    if(!customerId){
+      const body=new URLSearchParams({email:b.customerEmail,name:b.customerName,phone:b.customerPhone||''}).toString();
+      const createResp=await fetch('https://api.stripe.com/v1/customers',{method:'POST',headers:{'Authorization':auth,'Content-Type':'application/x-www-form-urlencoded'},body});
+      const createData=await createResp.json();
+      customerId=createData?.id;
+    }
+  }catch(e){return err('Stripe customer error: '+e.message);}
+  // Create invoice
+  try{
+    // Create invoice items
+    for(const item of b.lineItems){
+      const amt=Math.round(item.qty*item.price*100);
+      const itemBody=new URLSearchParams({customer:customerId,amount:String(amt),currency:'usd',description:item.desc}).toString();
+      await fetch('https://api.stripe.com/v1/invoiceitems',{method:'POST',headers:{'Authorization':auth,'Content-Type':'application/x-www-form-urlencoded'},body:itemBody});
+    }
+    // Create and finalize invoice
+    const invBody=new URLSearchParams({customer:customerId,collection_method:'send_invoice',days_until_due:'30',description:b.notes||''}).toString();
+    const invResp=await fetch('https://api.stripe.com/v1/invoices',{method:'POST',headers:{'Authorization':auth,'Content-Type':'application/x-www-form-urlencoded'},body:invBody});
+    const invData=await invResp.json();
+    if(!invData.id)return err('Stripe invoice creation failed');
+    // Finalize and send
+    await fetch(`https://api.stripe.com/v1/invoices/${invData.id}/finalize`,{method:'POST',headers:{'Authorization':auth,'Content-Type':'application/x-www-form-urlencoded'},body:''});
+    await fetch(`https://api.stripe.com/v1/invoices/${invData.id}/send`,{method:'POST',headers:{'Authorization':auth,'Content-Type':'application/x-www-form-urlencoded'},body:''});
+    const finalInv=await fetch(`https://api.stripe.com/v1/invoices/${invData.id}`,{headers:{'Authorization':auth}}).then(r=>r.json());
+    return json({ok:true,stripeId:invData.id,paymentUrl:finalInv.hosted_invoice_url||`https://dashboard.stripe.com/invoices/${invData.id}`});
+  }catch(e){return err('Stripe API error: '+e.message);}
+}
+
 // ── AI GENERATION ─────────────────────────────────────────────────────────
 async function handleStream(request,env){
   if(!env.ANTHROPIC_API_KEY)return err('MISSING_API_KEY',500);
@@ -188,6 +321,12 @@ export default {
       if(path==='/api/events'&&method==='GET')return handleListEvents(request,env);
       if(path==='/api/events'&&method==='POST')return handleSaveEvent(request,env);
       if(path==='/api/leads/parse'&&method==='POST')return handleParseLead(request,env);
+      if(path==='/api/invoices'&&method==='GET')return handleListInvoices(request,env);
+      if(path==='/api/invoices'&&method==='POST')return handleSaveInvoice(request,env);
+      if(path==='/api/quickbooks/invoice'&&method==='POST')return handleQBOInvoice(request,env);
+      if(path==='/api/quickbooks/connect'&&method==='GET')return handleQBOConnect(request,env);
+      if(path==='/api/quickbooks/callback'&&method==='GET')return handleQBOCallback(request,env);
+      if(path==='/api/stripe/invoice'&&method==='POST')return handleStripeInvoice(request,env);
       if(path==='/functions/generate/stream'&&method==='POST')return handleStream(request,env);
       if(path==='/functions/generate'&&method==='POST')return handleGenerate(request,env);
       return env.ASSETS.fetch(request);

@@ -643,53 +643,18 @@ async function executeAction(intent, action) {
 }
 
 async function executeInvoice(action) {
-  speak(`Creating invoice for ${action.customerName} now.`);
-  // Store invoice in localStorage for now, save to D1 when authenticated
-  const invoice = {
-    id: 'inv_' + Math.random().toString(36).substr(2, 8),
+  speak(`Opening invoice builder for ${action.customerName}.`);
+  // Store the action context so invoices.html can pick it up
+  sessionStorage.setItem('stoke_invoice_event', JSON.stringify({
     customerName: action.customerName,
     customerEmail: action.customerEmail,
-    eventId: action.eventId,
+    customerPhone: action.customerPhone,
     serviceType: action.serviceType,
     amount: action.amount,
     notes: action.notes,
-    status: 'draft',
-    createdAt: new Date().toISOString(),
-  };
-  try {
-    const invoices = JSON.parse(localStorage.getItem('stoke_invoices') || '[]');
-    invoices.push(invoice);
-    localStorage.setItem('stoke_invoices', JSON.stringify(invoices));
-  } catch(e) {}
-
-  // Try to save to API
-  try {
-    await fetch('/api/invoices', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(invoice)
-    });
-  } catch(e) {}
-
-  // Show success card
-  showCommandCard(
-    '🧾',
-    'Invoice Created',
-    `Draft invoice for ${action.customerName} — $${action.amount || '—'}. Open the invoice to send.`,
-    {
-      'Customer': action.customerName,
-      'Email': action.customerEmail,
-      'Amount': action.amount ? `$${action.amount}` : 'Set manually',
-      'Status': 'Draft — ready to send',
-    },
-    () => {
-      // In future: navigate to invoice page
-      speak(`Invoice saved. You can review and send it from the dashboard.`);
-    },
-    null
-  );
-  document.getElementById('cmd-confirm-btn').textContent = '📧 Send Invoice';
+    lineItems: action.amount ? [{ desc: action.serviceType || 'Service', qty: 1, price: action.amount }] : [],
+  }));
+  setTimeout(() => window.location.href = 'invoices.html', 1200);
 }
 
 async function executeBook(action) {
