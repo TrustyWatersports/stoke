@@ -184,17 +184,26 @@
 </style>
 </head>
 <body>
-<div class="app">
+<div class="app app-wide">
 
   <div class="header">
-    <div class="logo"><svg viewBox="0 0 20 20" fill="none" width="22" height="22"><path d="M10 2C10 2 4 8 4 12a6 6 0 0012 0c0-4-6-10-6-10z" fill="white" opacity=".95"/><path d="M10 8c0 0-2 3-2 5a2 2 0 004 0c0-2-2-5-2-5z" fill="white" opacity=".45"/></svg></div>
-    <span class="wordmark">Stoke</span>
-    <span class="version-badge">v8</span>
-    <nav style="margin-left:auto;display:flex;gap:6px;align-items:center">
-      <a href="dashboard.html" style="font-size:12px;color:var(--text-3);text-decoration:none;padding:4px 10px;border:0.5px solid var(--border);border-radius:20px">&#8592; Dashboard</a>
-      <a href="calendar.html" style="font-size:12px;color:var(--text-3);text-decoration:none;padding:4px 10px;border:0.5px solid var(--border);border-radius:20px">&#128344; Calendar</a>
-      <span id="auth-indicator" style="display:none;font-size:11px;color:var(--green);background:var(--green-light);padding:3px 10px;border-radius:20px;border:0.5px solid var(--green)"></span>
-    </span>
+    <a href="dashboard.html" class="header-home">
+      <div class="logo"><svg viewBox="0 0 20 20" fill="none" width="20" height="20"><path d="M10 2C10 2 4 8 4 12a6 6 0 0012 0c0-4-6-10-6-10z" fill="white" opacity=".95"/><path d="M10 8c0 0-2 3-2 5a2 2 0 004 0c0-2-2-5-2-5z" fill="white" opacity=".45"/></svg></div>
+      <span class="wordmark">Stoke</span>
+    </a>
+    <div class="header-divider"></div>
+    <nav class="header-nav">
+      <a href="dashboard.html" class="nav-pill">&#127968; Home</a>
+      <a href="index.html" class="nav-pill">&#9997; Generate</a>
+      <a href="schedule.html" class="nav-pill">&#128197; Posts</a>
+      <a href="reel-maker.html" class="nav-pill">&#127916; Reels</a>
+      <a href="calendar.html" class="nav-pill">&#128198; Calendar</a>
+      <a href="invoices.html" class="nav-pill active">&#129534; Invoices</a>
+      <div style="width:1px;height:16px;background:var(--border-2);margin:0 2px;flex-shrink:0"></div>
+      <a href="settings.html" class="nav-pill-icon" title="Settings">&#9881;</a>
+      <a href="voice-wizard.html" class="nav-pill-icon" title="Voice Profile">&#10024;</a>
+      <span id="auth-indicator" class="auth-badge" style="display:none"></span>
+    </nav>
   </div>
 
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem">

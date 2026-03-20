@@ -193,14 +193,23 @@ input[type=range].vol-slider {
 <div class="app">
 
   <div class="header">
-    <div class="logo"><svg viewBox="0 0 20 20" fill="none" width="22" height="22"><path d="M10 2C10 2 4 8 4 12a6 6 0 0012 0c0-4-6-10-6-10z" fill="white" opacity=".95"/><path d="M10 8c0 0-2 3-2 5a2 2 0 004 0c0-2-2-5-2-5z" fill="white" opacity=".45"/></svg></div>
-    <span class="wordmark">Stoke</span>
-    <span class="version-badge">v8</span>
-    <span class="tagline" style="margin-left:auto;display:flex;gap:8px;align-items:center">
-      <a href="index.html" style="font-size:12px;color:var(--green);text-decoration:none;font-weight:500">&#8592; Generator</a>
-      <a href="schedule.html" style="font-size:12px;color:var(--text-3);text-decoration:none;padding:4px 10px;border:0.5px solid var(--border);border-radius:20px">&#128197; Schedule</a>
-      <span id="auth-indicator" style="display:none;font-size:11px;color:var(--green);background:var(--green-light);padding:3px 10px;border-radius:20px;border:0.5px solid var(--green)"></span>
-    </span>
+    <a href="dashboard.html" class="header-home">
+      <div class="logo"><svg viewBox="0 0 20 20" fill="none" width="20" height="20"><path d="M10 2C10 2 4 8 4 12a6 6 0 0012 0c0-4-6-10-6-10z" fill="white" opacity=".95"/><path d="M10 8c0 0-2 3-2 5a2 2 0 004 0c0-2-2-5-2-5z" fill="white" opacity=".45"/></svg></div>
+      <span class="wordmark">Stoke</span>
+    </a>
+    <div class="header-divider"></div>
+    <nav class="header-nav">
+      <a href="dashboard.html" class="nav-pill">&#127968; Home</a>
+      <a href="index.html" class="nav-pill">&#9997; Generate</a>
+      <a href="schedule.html" class="nav-pill">&#128197; Posts</a>
+      <a href="reel-maker.html" class="nav-pill active">&#127916; Reels</a>
+      <a href="calendar.html" class="nav-pill">&#128198; Calendar</a>
+      <a href="invoices.html" class="nav-pill">&#129534; Invoices</a>
+      <div style="width:1px;height:16px;background:var(--border-2);margin:0 2px;flex-shrink:0"></div>
+      <a href="settings.html" class="nav-pill-icon" title="Settings">&#9881;</a>
+      <a href="voice-wizard.html" class="nav-pill-icon" title="Voice Profile">&#10024;</a>
+      <span id="auth-indicator" class="auth-badge" style="display:none"></span>
+    </nav>
   </div>
 
   <!-- Page header -->
@@ -898,37 +907,44 @@ async function createReel() {
     return;
   }
 
-  const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
-    ? 'video/webm;codecs=vp9'
-    : MediaRecorder.isTypeSupported('video/webm')
-    ? 'video/webm'
-    : 'video/mp4';
+  // Inject audio into stream before recording starts (single pass — eliminates stall)
+  if (selectedTrack) {
+    try {
+      const audioCtx = new AudioContext(); window._reelAudioCtx = audioCtx;
+      const audioEl = new Audio(); audioEl.crossOrigin = 'anonymous'; audioEl.src = selectedTrack.url; audioEl.loop = true;
+      const src = audioCtx.createMediaElementSource(audioEl);
+      const gain = audioCtx.createGain(); gain.gain.value = musicVolume;
+      gain.gain.setValueAtTime(musicVolume, audioCtx.currentTime);
+      gain.gain.setValueAtTime(musicVolume, audioCtx.currentTime + Math.max(0, selectedDuration - 2));
+      gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + selectedDuration);
+      const dest = audioCtx.createMediaStreamDestination();
+      src.connect(gain); gain.connect(dest);
+      dest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
+      audioEl.play().catch(e => console.warn('[Reel Audio]', e));
+      setTimeout(() => { try { audioEl.pause(); } catch(e) {} }, (selectedDuration + 1) * 1000);
+    } catch(e) { console.warn('[Reel Audio setup]', e); }
+  }
+
+  const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+    ? 'video/webm;codecs=vp9,opus'
+    : MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9'
+    : MediaRecorder.isTypeSupported('video/webm') ? 'video/webm' : 'video/mp4';
 
   const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8000000 });
   const chunks = [];
   recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
 
   recorder.onstop = async () => {
-    const videoBlob = new Blob(chunks, { type: mimeType });
-
-    // Mix in audio if a track is selected
-    if (selectedTrack) {
-      label.textContent = 'Adding music...';
-      bar.style.width = '90%';
-      try {
-        renderedBlob = await mixAudioIntoVideo(videoBlob, selectedTrack, selectedDuration);
-      } catch(e) {
-        console.warn('[Music] Mix failed, using silent video:', e.message);
-        renderedBlob = videoBlob;
-      }
-    } else {
-      renderedBlob = videoBlob;
-    }
-
+    renderedBlob = new Blob(chunks, { type: mimeType });
     bar.style.width = '100%';
     label.textContent = 'Done!';
     btn.disabled = false;
     btn.innerHTML = '<span>&#127916;</span> Create Another';
+    // Clean up audio context
+    if (window._reelAudioCtx) {
+      try { window._reelAudioCtx.close(); } catch(e) {}
+      window._reelAudioCtx = null;
+    }
     setTimeout(() => {
       progress.style.display = 'none';
       showSharePanel();
@@ -1340,17 +1356,31 @@ async function createVideoReel() {
   bar.style.width = '20%'; label.textContent = 'Setting up export...';
   const duration = Math.min(uploadedVideo.duration, selectedDuration);
   const stream = offCanvas.captureStream(30);
-  const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm';
+
+  // Inject audio into stream before recording (single pass — no re-encode stall)
+  if (selectedTrack) {
+    try {
+      const audioCtx = new AudioContext(); window._reelAudioCtx = audioCtx;
+      const audioEl = new Audio(); audioEl.crossOrigin = 'anonymous'; audioEl.src = selectedTrack.url; audioEl.loop = true;
+      const src = audioCtx.createMediaElementSource(audioEl);
+      const gain = audioCtx.createGain(); gain.gain.value = musicVolume;
+      const dest = audioCtx.createMediaStreamDestination();
+      src.connect(gain); gain.connect(dest);
+      dest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
+      audioEl.play().catch(e => console.warn('[Audio]', e));
+      setTimeout(() => { try{audioEl.pause();}catch(e){} }, (duration + 1) * 1000);
+    } catch(e) { console.warn('[Audio]', e); }
+  }
+
+  const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+    ? 'video/webm;codecs=vp9,opus'
+    : MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm';
   const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8000000 });
   const chunks = [];
   recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
   recorder.onstop = async () => {
-    const videoBlob = new Blob(chunks, { type: mimeType });
-    if (selectedTrack) {
-      label.textContent = 'Adding music...'; bar.style.width = '90%';
-      try { renderedBlob = await mixAudioIntoVideo(videoBlob, selectedTrack, duration); }
-      catch(e) { renderedBlob = videoBlob; }
-    } else { renderedBlob = videoBlob; }
+    renderedBlob = new Blob(chunks, { type: mimeType });
+    if (window._reelAudioCtx) { try{window._reelAudioCtx.close();}catch(e){} window._reelAudioCtx = null; }
     bar.style.width = '100%'; label.textContent = 'Done!';
     btn.disabled = false;
     btn.querySelector('#create-btn-label').textContent = 'Export Again';

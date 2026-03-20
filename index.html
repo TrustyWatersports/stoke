@@ -77,24 +77,23 @@
 
   <!-- ── HEADER ─────────────────────────────────────────── -->
   <div class="header">
-    <div class="logo" aria-hidden="true">
-      <svg viewBox="0 0 20 20" fill="none" width="22" height="22">
-        <path d="M10 2C10 2 4 8 4 12a6 6 0 0012 0c0-4-6-10-6-10z" fill="white" opacity=".95"/>
-        <path d="M10 8c0 0-2 3-2 5a2 2 0 004 0c0-2-2-5-2-5z" fill="white" opacity=".45"/>
-      </svg>
-    </div>
-    <span class="wordmark">Stoke</span>
-    <span class="version-badge">v8</span>
-    <span class="tagline">Turn your work into growth</span>
-    <a href="settings.html" style="font-size:12px;color:var(--text-3);text-decoration:none;padding:4px 10px;border:0.5px solid var(--border);border-radius:20px;transition:all .15s" onmouseover="this.style.color='var(--green)';this.style.borderColor='var(--green)'" onmouseout="this.style.color='var(--text-3)';this.style.borderColor='var(--border)'">⚙ Settings</a>
-    <a href="schedule.html" style="font-size:12px;color:var(--text-3);text-decoration:none;padding:4px 10px;border:0.5px solid var(--border);border-radius:20px;transition:all .15s" onmouseover="this.style.color='var(--green)';this.style.borderColor='var(--green)'" onmouseout="this.style.color='var(--text-3)';this.style.borderColor='var(--border)'">&#128197; Schedule</a>
-    <a href="voice-wizard.html" style="font-size:12px;color:var(--text-3);text-decoration:none;padding:4px 10px;border:0.5px solid var(--border);border-radius:20px;transition:all .15s" onmouseover="this.style.color='var(--green)';this.style.borderColor='var(--green)'" onmouseout="this.style.color='var(--text-3)';this.style.borderColor='var(--border)'">&#10024; Voice</a>
-    <a href="reel-maker.html" style="font-size:12px;color:var(--text-3);text-decoration:none;padding:4px 10px;border:0.5px solid var(--border);border-radius:20px;transition:all .15s" onmouseover="this.style.color='var(--green)';this.style.borderColor='var(--green)'" onmouseout="this.style.color='var(--text-3)';this.style.borderColor='var(--border)'">&#127916; Reel</a>
-    <a href="calendar.html" style="font-size:12px;color:var(--text-3);text-decoration:none;padding:4px 10px;border:0.5px solid var(--border);border-radius:20px;transition:all .15s" onmouseover="this.style.color='var(--green)';this.style.borderColor='var(--green)'" onmouseout="this.style.color='var(--text-3)';this.style.borderColor='var(--border)'">&#128197; Calendar</a>
-    <button onclick="openHistory()" style="font-size:12px;color:var(--text-3);background:none;padding:4px 10px;border:0.5px solid var(--border);border-radius:20px;cursor:pointer;font-family:var(--font-body);transition:all .15s;display:inline-flex;align-items:center;gap:5px" onmouseover="this.style.color='var(--green)';this.style.borderColor='var(--green)'" onmouseout="this.style.color='var(--text-3)';this.style.borderColor='var(--border)'">
-      ⏱ History <span id="history-badge" style="display:none;background:var(--green);color:#fff;border-radius:20px;padding:1px 6px;font-size:10px;font-weight:600"></span>
-    </button>
-    <span id="auth-indicator" style="display:none;font-size:11px;color:var(--green);background:var(--green-light);padding:3px 10px;border-radius:20px;border:0.5px solid var(--green)"></span>
+    <a href="dashboard.html" class="header-home">
+      <div class="logo"><svg viewBox="0 0 20 20" fill="none" width="20" height="20"><path d="M10 2C10 2 4 8 4 12a6 6 0 0012 0c0-4-6-10-6-10z" fill="white" opacity=".95"/><path d="M10 8c0 0-2 3-2 5a2 2 0 004 0c0-2-2-5-2-5z" fill="white" opacity=".45"/></svg></div>
+      <span class="wordmark">Stoke</span>
+    </a>
+    <div class="header-divider"></div>
+    <nav class="header-nav">
+      <a href="dashboard.html" class="nav-pill">&#127968; Home</a>
+      <a href="index.html" class="nav-pill active">&#9997; Generate</a>
+      <a href="schedule.html" class="nav-pill">&#128197; Posts</a>
+      <a href="reel-maker.html" class="nav-pill">&#127916; Reels</a>
+      <a href="calendar.html" class="nav-pill">&#128198; Calendar</a>
+      <a href="invoices.html" class="nav-pill">&#129534; Invoices</a>
+      <div style="width:1px;height:16px;background:var(--border-2);margin:0 2px;flex-shrink:0"></div>
+      <a href="settings.html" class="nav-pill-icon" title="Settings">&#9881;</a>
+      <a href="voice-wizard.html" class="nav-pill-icon" title="Voice Profile">&#10024;</a>
+      <span id="auth-indicator" class="auth-badge" style="display:none"></span>
+    </nav>
   </div>
 
   <!-- ── FORM ───────────────────────────────────────────── -->
