@@ -993,11 +993,12 @@ async function createReel() {
     drawCoverPhoto(ctx, img, W, H, scale, tx, ty);
     ctx.globalAlpha = 1;
 
-    // Bottom gradient for text
+    // Bottom gradient — always drawn when caption exists (keeps it readable across all photos)
     if (caption) {
+      const gradOpacity = photoIdx === 0 ? Math.min(0.82, (timeInPhoto / 0.25) * 0.82) : 0.82;
       const grad = ctx.createLinearGradient(0, H * 0.5, 0, H);
       grad.addColorStop(0, 'rgba(0,0,0,0)');
-      grad.addColorStop(1, 'rgba(0,0,0,0.82)');
+      grad.addColorStop(1, `rgba(0,0,0,${gradOpacity})`);
       ctx.fillStyle = grad;
       ctx.fillRect(0, H * 0.5, W, H * 0.5);
     }
@@ -1009,9 +1010,10 @@ async function createReel() {
     ctx.fillStyle = topGrad;
     ctx.fillRect(0, 0, W, 180);
 
-    // Caption
+    // Caption — fades in on first photo, stays visible for all subsequent photos
     if (caption) {
-      ctx.globalAlpha = Math.min(1, timeInPhoto * 4);
+      const captionAlpha = photoIdx === 0 ? Math.min(1, timeInPhoto * 4) : 1;
+      ctx.globalAlpha = captionAlpha;
       ctx.fillStyle = 'white';
       ctx.font = (selectedVibe === 'energy' ? '500 68px' : '500 60px') + ' "DM Serif Display", Georgia, serif';
       ctx.textAlign = 'left';
