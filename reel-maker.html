@@ -777,17 +777,15 @@ function animatePreview(canvas, imgs, caption, spp) {
     ctx.fillStyle = topGrad;
     ctx.fillRect(0, 0, W, 150);
 
-    // Caption text
+    // Caption text — always visible, no fade per photo
     if (caption) {
-      const opacity = Math.min(1, photoProgress * 5);
-      ctx.globalAlpha = opacity;
+      ctx.globalAlpha = 1;
       ctx.fillStyle = 'white';
       ctx.font = `500 ${selectedVibe === 'energy' ? 68 : 60}px "DM Serif Display", Georgia, serif`;
       ctx.textAlign = 'left';
       ctx.shadowColor = 'rgba(0,0,0,0.6)';
       ctx.shadowBlur = 20;
       wrapText(ctx, caption, 70, H - 220, W - 140, 80);
-      ctx.globalAlpha = 1;
       ctx.shadowBlur = 0;
     }
 
