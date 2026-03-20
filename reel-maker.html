@@ -983,22 +983,25 @@ async function createReel() {
       ty = photoProgress * -50;
     }
 
-    // Crossfade between photos
+    // Crossfade between photos — draw previous photo first, then new photo on top
     if (photoIdx > 0 && timeInPhoto < 0.4) {
       const fade = timeInPhoto / 0.4;
       ctx.globalAlpha = 1;
       drawCoverPhoto(ctx, validImgs[photoIdx - 1], W, H, 1.05, 0, 0);
       ctx.globalAlpha = fade;
+      drawCoverPhoto(ctx, img, W, H, scale, tx, ty);
+    } else {
+      drawCoverPhoto(ctx, img, W, H, scale, tx, ty);
     }
-    drawCoverPhoto(ctx, img, W, H, scale, tx, ty);
+
+    // Always reset globalAlpha before drawing overlays
     ctx.globalAlpha = 1;
 
-    // Bottom gradient — always drawn when caption exists (keeps it readable across all photos)
+    // Bottom gradient — permanent once caption exists
     if (caption) {
-      const gradOpacity = photoIdx === 0 ? Math.min(0.82, (timeInPhoto / 0.25) * 0.82) : 0.82;
       const grad = ctx.createLinearGradient(0, H * 0.5, 0, H);
       grad.addColorStop(0, 'rgba(0,0,0,0)');
-      grad.addColorStop(1, `rgba(0,0,0,${gradOpacity})`);
+      grad.addColorStop(1, 'rgba(0,0,0,0.85)');
       ctx.fillStyle = grad;
       ctx.fillRect(0, H * 0.5, W, H * 0.5);
     }
@@ -1010,15 +1013,14 @@ async function createReel() {
     ctx.fillStyle = topGrad;
     ctx.fillRect(0, 0, W, 180);
 
-    // Caption — fades in on first photo, stays visible for all subsequent photos
+    // Caption — always at full opacity (fades in gently on very first frames only)
     if (caption) {
-      const captionAlpha = photoIdx === 0 ? Math.min(1, timeInPhoto * 4) : 1;
-      ctx.globalAlpha = captionAlpha;
+      ctx.globalAlpha = elapsed < 0.5 ? Math.min(1, elapsed * 2.5) : 1;
       ctx.fillStyle = 'white';
       ctx.font = (selectedVibe === 'energy' ? '500 68px' : '500 60px') + ' "DM Serif Display", Georgia, serif';
       ctx.textAlign = 'left';
-      ctx.shadowColor = 'rgba(0,0,0,0.8)';
-      ctx.shadowBlur = 24;
+      ctx.shadowColor = 'rgba(0,0,0,0.9)';
+      ctx.shadowBlur = 28;
       wrapText(ctx, caption, 72, H - 300, W - 144, 80);
       ctx.globalAlpha = 1;
       ctx.shadowBlur = 0;
