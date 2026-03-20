@@ -10,16 +10,5 @@ database_id   = "f5fbf67f-c694-4e40-bb84-402f5bba1c24"
 binding    = "PHOTOS"
 bucket_name = "stoke-photos"
 
-[[kv_namespaces]]
-binding = "KV"
-id      = "REPLACE_WITH_KV_NAMESPACE_ID"
-
-# Environment variables — set these in Cloudflare Dashboard
-# Pages → stoke → Settings → Environment Variables:
-#
-#   ANTHROPIC_API_KEY   — already set
-#   META_APP_ID         — 1684200919252951
-#   META_APP_SECRET     — set after resetting in Meta dashboard
-#   EMAIL_SECRET        — any random 32-char string
-#   APP_DOMAIN          — stoke-1jn.pages.dev (update when domain bought)
-#   SENDGRID_API_KEY    — leave blank for now (magic links logged to console)
+# Environment variables set in Cloudflare Dashboard:
+# ANTHROPIC_API_KEY, META_APP_ID, META_APP_SECRET, EMAIL_SECRET, APP_DOMAIN
