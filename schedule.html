@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stoke — Schedule</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/stoke.css">
+<style>
+.sched-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:12px;}
+.sched-title{font-family:var(--font-serif);font-size:22px;color:var(--text);}
+.sched-nav{display:flex;align-items:center;gap:8px;}
+.sched-nav-btn{width:36px;height:36px;border:0.5px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text-2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .15s;}
+.sched-nav-btn:hover{border-color:var(--green);color:var(--green);}
+.sched-nav-btn.wide{width:auto;padding:0 10px;font-size:11px;}
+.sched-week-label{font-size:13px;font-weight:500;color:var(--text);min-width:180px;text-align:center;}
+.week-grid{display:grid;grid-template-columns:72px repeat(7,1fr);border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.week-col-label{padding:10px 6px;text-align:center;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-3);background:var(--bg-2);border-bottom:0.5px solid var(--border);border-right:0.5px solid var(--border);}
+.week-col-label.today{color:var(--green);}
+.week-col-label .dn{display:block;font-size:18px;font-weight:500;font-family:var(--font-serif);color:var(--text);margin-top:2px;}
+.week-col-label.today .dn{color:var(--green);}
+.plat-label{padding:8px;font-size:10px;font-weight:500;color:var(--text-3);background:var(--bg-2);border-bottom:0.5px solid var(--border);border-right:0.5px solid var(--border);display:flex;align-items:center;gap:5px;min-height:60px;}
+.plat-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.sched-cell{min-height:72px;padding:4px;border-bottom:0.5px solid var(--border);border-right:0.5px solid var(--border);background:var(--bg);transition:background .15s;}
+.sched-cell.today-col{background:rgba(26,107,74,0.025);}
+.sched-cell.drag-over{background:var(--green-light)!important;outline:1.5px dashed var(--green);outline-offset:-2px;}
+.chip{background:var(--bg-2);border:0.5px solid var(--border);border-radius:5px;padding:4px 6px;margin-bottom:3px;font-size:10px;line-height:1.4;color:var(--text-2);cursor:grab;transition:all .15s;display:block;}
+.chip:hover{border-color:var(--green);color:var(--text);}
+.chip.approved{border-color:var(--green);background:var(--green-light);color:var(--green);}
+.chip.scheduled{border-color:#4285F4;background:rgba(66,133,244,0.08);color:#4285F4;}
+.chip.published{opacity:0.45;cursor:default;}
+.chip.dragging{opacity:0.25;}
+.chip-job{font-weight:500;margin-bottom:1px;}
+.chip-time{font-size:9px;opacity:0.7;margin-top:2px;}
+.sched-stats{display:flex;gap:10px;margin-bottom:1.5rem;flex-wrap:wrap;}
+.stat-pill{display:flex;align-items:center;gap:6px;padding:5px 10px;background:var(--bg-2);border:0.5px solid var(--border);border-radius:20px;font-size:11px;color:var(--text-2);}
+.sdot{width:7px;height:7px;border-radius:50%;}
+.sched-empty{padding:3rem;text-align:center;color:var(--text-3);font-size:13px;grid-column:1/-1;background:var(--bg);}
+.sched-empty a{color:var(--green);text-decoration:none;}
+.tp-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:200;}
+.tp-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius);padding:1.5rem;width:300px;z-index:201;box-shadow:0 8px 40px rgba(0,0,0,0.12);}
+.tp-title{font-family:var(--font-serif);font-size:18px;margin-bottom:.5rem;color:var(--text);}
+.tp-info{font-size:12px;color:var(--text-3);margin-bottom:1rem;}
+.tp-actions{display:flex;gap:8px;margin-top:1rem;}
+.tp-btn{flex:1;padding:10px;border-radius:var(--radius);font-family:var(--font-body);font-size:13px;cursor:pointer;min-height:44px;}
+.tp-btn.p{background:var(--green);color:white;border:none;}
+.tp-btn.s{background:none;border:0.5px solid var(--border);color:var(--text-2);}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="logo"><svg viewBox="0 0 20 20" fill="none" width="22" height="22"><path d="M10 2C10 2 4 8 4 12a6 6 0 0012 0c0-4-6-10-6-10z" fill="white" opacity=".95"/><path d="M10 8c0 0-2 3-2 5a2 2 0 004 0c0-2-2-5-2-5z" fill="white" opacity=".45"/></svg></div>
+    <span class="wordmark">Stoke</span>
+    <span class="version-badge">v8</span>
+    <span class="tagline" style="margin-left:auto;display:flex;gap:8px;align-items:center">
+      <a href="index.html" style="font-size:12px;color:var(--green);text-decoration:none;font-weight:500">&#8592; Generator</a>
+      <a href="settings.html" style="font-size:12px;color:var(--text-3);text-decoration:none;padding:4px 10px;border:0.5px solid var(--border);border-radius:20px">Settings</a>
+      <span id="auth-indicator" style="display:none;font-size:11px;color:var(--green);background:var(--green-light);padding:3px 10px;border-radius:20px;border:0.5px solid var(--green)"></span>
+    </span>
+  </div>
+
+  <div class="sched-header">
+    <div class="sched-title">Publishing Schedule</div>
+    <div class="sched-nav">
+      <button class="sched-nav-btn" onclick="prevWeek()">&#8249;</button>
+      <div class="sched-week-label" id="week-label"></div>
+      <button class="sched-nav-btn" onclick="nextWeek()">&#8250;</button>
+      <button class="sched-nav-btn wide" onclick="goToToday()">Today</button>
+    </div>
+  </div>
+
+  <div class="sched-stats">
+    <div class="stat-pill"><div class="sdot" style="background:var(--border-2)"></div><span id="s-draft">0 draft</span></div>
+    <div class="stat-pill"><div class="sdot" style="background:var(--green)"></div><span id="s-approved">0 approved</span></div>
+    <div class="stat-pill"><div class="sdot" style="background:#4285F4"></div><span id="s-scheduled">0 scheduled</span></div>
+    <div class="stat-pill"><div class="sdot" style="background:#888"></div><span id="s-published">0 published</span></div>
+  </div>
+
+  <div class="week-grid" id="week-grid"></div>
+</div>
+
+<!-- Time picker -->
+<div class="tp-overlay" id="tp-overlay" onclick="closeTP()"></div>
+<div class="tp-modal" id="tp-modal" style="display:none">
+  <div class="tp-title">Schedule post</div>
+  <div class="tp-info" id="tp-info"></div>
+  <div class="field-group">
+    <label class="field-label">Publish date &amp; time</label>
+    <input type="datetime-local" id="tp-input" style="width:100%;padding:10px;font-family:var(--font-body);font-size:14px;border:0.5px solid var(--border-2);border-radius:var(--radius);background:var(--bg);color:var(--text);outline:none">
+  </div>
+  <div class="tp-actions">
+    <button class="tp-btn s" onclick="closeTP()">Cancel</button>
+    <button class="tp-btn p" onclick="confirmTP()">Schedule &#8594;</button>
+  </div>
+</div>
+
+<script>
+const PCOLORS={INSTAGRAM:'#E1306C',FACEBOOK:'#1877F2',TIKTOK:'#010101',GOOGLE:'#4285F4',EMAIL:'#1a6b4a',YOUTUBE:'#FF0000'};
+const PLABELS={INSTAGRAM:'Instagram',FACEBOOK:'Facebook',TIKTOK:'TikTok',GOOGLE:'Google Business',EMAIL:'Email',YOUTUBE:'YouTube'};
+const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+let weekOffset=0,posts=[],dragPost=null,tpPost=null;
+
+(async function init(){
+  try{
+    const me=await fetch('/auth/me').then(r=>r.json());
+    if(me.authenticated){
+      const el=document.getElementById('auth-indicator');
+      if(el){el.textContent=me.user?.name;el.style.display='inline-flex';}
+    }
+  }catch(e){}
+  loadPosts();
+  renderWeek();
+})();
+
+function loadPosts(){
+  posts=[];
+  try{
+    const history=JSON.parse(localStorage.getItem('stoke_history')||'[]');
+    history.forEach(entry=>{
+      (entry.campaign||[]).forEach(day=>{
+        const sd=day.scheduledDateStr?new Date(day.scheduledDateStr):offsetDate(day.day);
+        (day.posts||[]).forEach((post,idx)=>{
+          posts.push({
+            id:`${entry.id}-d${day.day}-p${idx}`,
+            historyId:entry.id,dayNum:day.day,postIdx:idx,
+            channel:post.channel,text:post.text,
+            status:post.status||'draft',
+            scheduledDate:new Date(sd),
+            jobType:entry.meta?.jobType||'Job',
+          });
+        });
+      });
+    });
+  }catch(e){console.warn('[Schedule]',e.message);}
+  updateStats();
+}
+
+function offsetDate(n){const d=new Date();d.setDate(d.getDate()+n-1);return d;}
+
+function getWeekDates(){
+  const t=new Date(),s=new Date(t);
+  s.setDate(t.getDate()-t.getDay()+(weekOffset*7));
+  return Array.from({length:7},(_,i)=>{const d=new Date(s);d.setDate(s.getDate()+i);return d;});
+}
+
+function renderWeek(){
+  const days=getWeekDates(),today=new Date().toDateString(),grid=document.getElementById('week-grid');
+  const f=days[0],l=days[6];
+  document.getElementById('week-label').textContent=
+    `${MONTHS[f.getMonth()]} ${f.getDate()} \u2013 ${MONTHS[l.getMonth()]} ${l.getDate()}, ${l.getFullYear()}`;
+  grid.innerHTML='';
+
+  // Corner + day headers
+  const corner=document.createElement('div');
+  corner.className='week-col-label';
+  grid.appendChild(corner);
+  days.forEach(d=>{
+    const isT=d.toDateString()===today;
+    const el=document.createElement('div');
+    el.className='week-col-label'+(isT?' today':'');
+    el.innerHTML=`${DAYS[d.getDay()]}<span class="dn">${d.getDate()}</span>`;
+    grid.appendChild(el);
+  });
+
+  if(posts.length===0){
+    const e=document.createElement('div');e.className='sched-empty';
+    e.innerHTML='No posts yet. <a href="index.html">Generate a campaign \u2192</a>';
+    grid.appendChild(e);return;
+  }
+
+  const activePlatforms=[...new Set(posts.map(p=>p.channel))];
+  activePlatforms.forEach(platform=>{
+    const color=PCOLORS[platform]||'#888';
+    const lbl=document.createElement('div');lbl.className='plat-label';
+    lbl.innerHTML=`<div class="plat-dot" style="background:${color}"></div><span>${PLABELS[platform]||platform}</span>`;
+    grid.appendChild(lbl);
+
+    days.forEach(date=>{
+      const isT=date.toDateString()===today;
+      const cell=document.createElement('div');
+      cell.className='sched-cell'+(isT?' today-col':'');
+      cell.dataset.date=date.toISOString().slice(0,10);
+      cell.dataset.plat=platform;
+
+      posts.filter(p=>p.channel===platform&&p.scheduledDate.toDateString()===date.toDateString())
+        .forEach(post=>{
+          const chip=document.createElement('div');
+          chip.className='chip '+(post.status||'draft');
+          chip.draggable=true;chip.dataset.id=post.id;
+          const t=post.status==='scheduled'
+            ?post.scheduledDate.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';
+          chip.innerHTML=`<div class="chip-job">${esc(post.jobType)}</div>`+
+            `<div style="opacity:.65;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(post.text.substring(0,45))}</div>`+
+            (t?`<div class="chip-time">${t}</div>`:'');
+          chip.addEventListener('click',e=>{e.stopPropagation();openTP(post,date);});
+          chip.addEventListener('dragstart',e=>{dragPost=post;setTimeout(()=>chip.classList.add('dragging'),0);e.dataTransfer.effectAllowed='move';});
+          chip.addEventListener('dragend',()=>{chip.classList.remove('dragging');dragPost=null;});
+          cell.appendChild(chip);
+        });
+
+      cell.addEventListener('dragover',e=>{if(dragPost){e.preventDefault();cell.classList.add('drag-over');}});
+      cell.addEventListener('dragleave',()=>cell.classList.remove('drag-over'));
+      cell.addEventListener('drop',e=>{
+        e.preventDefault();cell.classList.remove('drag-over');
+        if(!dragPost)return;
+        const nd=new Date(date);
+        nd.setHours(dragPost.scheduledDate.getHours()||9,dragPost.scheduledDate.getMinutes()||0);
+        dragPost.scheduledDate=nd;saveChanges();renderWeek();
+      });
+      grid.appendChild(cell);
+    });
+  });
+  updateStats();
+}
+
+function openTP(post,date){
+  tpPost=post;
+  document.getElementById('tp-info').textContent=`${PLABELS[post.channel]||post.channel} \u00b7 ${post.jobType}`;
+  const d=new Date(post.scheduledDate);if(d.getHours()===0)d.setHours(9,0,0,0);
+  const pad=n=>String(n).padStart(2,'0');
+  document.getElementById('tp-input').value=
+    `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  document.getElementById('tp-modal').style.display='block';
+  document.getElementById('tp-overlay').style.display='block';
+}
+function closeTP(){
+  document.getElementById('tp-modal').style.display='none';
+  document.getElementById('tp-overlay').style.display='none';
+  tpPost=null;
+}
+function confirmTP(){
+  if(!tpPost)return;
+  const val=document.getElementById('tp-input').value;if(!val)return;
+  tpPost.scheduledDate=new Date(val);tpPost.status='scheduled';
+  saveChanges();closeTP();renderWeek();
+}
+
+function saveChanges(){
+  try{
+    const history=JSON.parse(localStorage.getItem('stoke_history')||'[]');
+    history.forEach(entry=>{
+      (entry.campaign||[]).forEach(day=>{
+        (day.posts||[]).forEach((post,idx)=>{
+          const key=`${entry.id}-d${day.day}-p${idx}`;
+          const u=posts.find(p=>p.id===key);
+          if(u){day.scheduledDateStr=u.scheduledDate.toISOString();post.status=u.status;}
+        });
+      });
+    });
+    localStorage.setItem('stoke_history',JSON.stringify(history));
+  }catch(e){console.warn('[Schedule]',e.message);}
+}
+
+function updateStats(){
+  const c={draft:0,approved:0,scheduled:0,published:0};
+  posts.forEach(p=>{if(c[p.status]!==undefined)c[p.status]++;});
+  document.getElementById('s-draft').textContent=c.draft+' draft';
+  document.getElementById('s-approved').textContent=c.approved+' approved';
+  document.getElementById('s-scheduled').textContent=c.scheduled+' scheduled';
+  document.getElementById('s-published').textContent=c.published+' published';
+}
+
+function prevWeek(){weekOffset--;renderWeek();}
+function nextWeek(){weekOffset++;renderWeek();}
+function goToToday(){weekOffset=0;renderWeek();}
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+</script>
+</body>
+</html>

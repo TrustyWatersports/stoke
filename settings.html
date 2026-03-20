@@ -395,7 +395,24 @@ function markUnsaved() { const el=document.getElementById('save-status'); el.tex
 function showComingSoon(p) { alert(`${p} direct publishing is coming soon. Use the Copy button on each post card for now.`); }
 function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-function initLoad() {
+async function initLoad() {
+  // Try D1 first if logged in
+  try {
+    const me = await fetch('/auth/me').then(r=>r.json());
+    if(me.authenticated){
+      const apiSettings = await fetch('/api/settings',{credentials:'include'}).then(r=>r.json()).catch(()=>null);
+      if(apiSettings&&Object.keys(apiSettings).length>0){
+        // Sync to localStorage and apply
+        localStorage.setItem('stoke_settings',JSON.stringify(apiSettings));
+        applySettings(apiSettings);
+        // Show sync indicator
+        const el=document.getElementById('save-status');
+        if(el){el.textContent='✦ Synced from cloud';el.className='save-status saved';setTimeout(()=>{el.textContent='All changes saved';},2000);}
+        return;
+      }
+    }
+  } catch(e){ console.warn('[Stoke] Settings API load failed:', e.message); }
+  // Fall back to localStorage
   try { const raw=localStorage.getItem('stoke_settings'); const s=raw?JSON.parse(raw):null; if(s){applySettings(s);}else{renderList('hashtag-list',DEFAULTS.hashtags);renderList('job-type-list',DEFAULTS.jobTypes);renderList('angles-list',DEFAULTS.angles);} } catch(e) { renderList('hashtag-list',DEFAULTS.hashtags);renderList('job-type-list',DEFAULTS.jobTypes);renderList('angles-list',DEFAULTS.angles); }
 }
 

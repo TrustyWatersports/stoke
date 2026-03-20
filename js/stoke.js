@@ -438,14 +438,35 @@ async function saveToHistory(campaign,meta,photos) {
 function updateHistoryBadge(count){const badge=document.getElementById('history-badge');if(badge){badge.textContent=count;badge.style.display=count>0?'inline-flex':'none';}}
 function openHistory(){const panel=document.getElementById('history-panel');panel.classList.add('open');panel.style.right='0';document.getElementById('history-overlay').style.display='block';renderHistoryList();}
 function closeHistory(){const panel=document.getElementById('history-panel');panel.classList.remove('open');panel.style.right='-380px';document.getElementById('history-overlay').style.display='none';}
-function renderHistoryList() {
-  const history=loadHistory();const container=document.getElementById('history-list');
+async function renderHistoryList() {
+  const container=document.getElementById('history-list');
   const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  // Show loading state
+  container.innerHTML=`<div style="padding:1.5rem;text-align:center;color:var(--text-3);font-size:13px">Loading...</div>`;
+  // Try D1 first if logged in, fall back to localStorage
+  let history=[];
+  if(auth.user){
+    try{
+      const apiHistory=await apiGet('/api/campaigns');
+      if(apiHistory&&apiHistory.length>0){
+        // Convert D1 format to history format
+        history=apiHistory.map(c=>({
+          id:c.id,
+          meta:{jobType:c.job_type,customerMoment:c.customer_moment,productsUsed:c.products_used,tone:c.tone,days:c.days,startDate:c.start_date,generatedAt:new Date(c.created_at*1000).toISOString()},
+          campaign:[],// posts loaded on demand
+          post_count:c.post_count
+        }));
+      }
+    }catch(e){console.warn('[Stoke] D1 history failed, using localStorage');history=loadHistory();}
+  } else {
+    history=loadHistory();
+  }
   if(history.length===0){container.innerHTML=`<div style="padding:2rem;text-align:center;color:var(--text-3);font-size:13px">No campaigns yet. Generate your first one!</div>`;return;}
   container.innerHTML=history.map((entry,idx)=>{
     const date=new Date(entry.meta.generatedAt||Date.now());
-    const total=entry.campaign.reduce((a,d)=>a+(d.posts?.length||0),0);
+    const total=entry.post_count||entry.campaign.reduce((a,d)=>a+(d.posts?.length||0),0);
     const channels=[...new Set(entry.campaign.flatMap(d=>(d.posts||[]).map(p=>p.channel)))];
+    const fromD1=entry.campaign.length===0&&entry.post_count>0;
     return `<div class="history-item" onclick="restoreFromHistory(${idx})">
       <div class="history-item-header"><span class="history-job">${escHtml(entry.meta.jobType||'Job')}</span><span class="history-date">${MON[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()} · ${date.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span></div>
       <div class="history-meta">${total} post${total!==1?'s':''} · ${entry.campaign.length} day${entry.campaign.length!==1?'s':''} · ${entry.meta.tone==='personal'?'Personal':'General'}</div>
