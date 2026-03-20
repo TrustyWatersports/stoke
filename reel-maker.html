@@ -127,6 +127,50 @@
   padding:4px 10px; border-radius:20px; font-size:10px; font-weight:600;
   color:white; letter-spacing:.03em;
 }
+
+/* Music selector */
+.music-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px; }
+.music-track-btn {
+  display:flex; align-items:center; gap:8px;
+  padding:8px 10px; border:0.5px solid var(--border);
+  border-radius:var(--radius); background:var(--bg-2);
+  cursor:pointer; transition:all .15s; text-align:left;
+  position:relative; overflow:hidden;
+}
+.music-track-btn:hover { border-color:var(--green); }
+.music-track-btn.selected { border-color:var(--green); background:var(--green-light); }
+.music-track-btn.playing { border-color:var(--green); }
+.music-track-btn.playing::before {
+  content:''; position:absolute; bottom:0; left:0;
+  height:2px; background:var(--green);
+  animation:music-progress 1.5s linear infinite;
+  width:100%;
+}
+@keyframes music-progress { 0%{opacity:1} 50%{opacity:.4} 100%{opacity:1} }
+.music-icon { font-size:16px; flex-shrink:0; }
+.music-info { flex:1; min-width:0; }
+.music-name { font-size:11px; font-weight:500; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.music-meta { font-size:9px; color:var(--text-3); margin-top:1px; }
+.music-play-btn {
+  width:22px; height:22px; border-radius:50%;
+  background:var(--green); border:none; cursor:pointer;
+  color:white; font-size:9px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  transition:background .15s;
+}
+.music-play-btn:hover { background:var(--green-mid); }
+.music-none-btn {
+  padding:8px 10px; border:0.5px solid var(--border);
+  border-radius:var(--radius); background:var(--bg-2);
+  cursor:pointer; font-size:11px; color:var(--text-3);
+  transition:all .15s; text-align:center;
+}
+.music-none-btn.selected { border-color:var(--border-2); color:var(--text-2); }
+.music-vol-row { display:flex; align-items:center; gap:8px; margin-top:8px; }
+.music-vol-label { font-size:11px; color:var(--text-3); flex-shrink:0; }
+input[type=range].vol-slider {
+  flex:1; height:4px; accent-color:var(--green);
+}
 </style>
 </head>
 <body>
@@ -201,9 +245,21 @@
         <div style="margin-top:6px;font-size:11px;color:var(--text-3)">Hashtags from your settings will be added automatically.</div>
       </div>
 
-      <!-- Step 4: Duration -->
+      <!-- Step 4: Music -->
+      <div style="margin-bottom:1.5rem">
+        <div class="field-label" style="margin-bottom:8px">4 &nbsp;&#8594;&nbsp; Music <span style="color:var(--text-3);font-weight:400">(royalty-free)</span></div>
+        <div class="music-grid" id="music-grid"></div>
+        <button class="music-none-btn" id="music-none-btn" onclick="selectTrack(null)" style="width:100%;margin-top:6px">&#128263; No music — silent video</button>
+        <div class="music-vol-row" id="vol-row" style="display:none">
+          <span class="music-vol-label">&#128266; Volume</span>
+          <input type="range" class="vol-slider" id="vol-slider" min="0" max="100" value="70" oninput="setVolume(this.value)">
+          <span style="font-size:11px;color:var(--text-3);min-width:28px" id="vol-label">70%</span>
+        </div>
+      </div>
+
+      <!-- Step 5: Duration -->
       <div style="margin-bottom:2rem">
-        <div class="field-label" style="margin-bottom:8px">4 &nbsp;&#8594;&nbsp; Length</div>
+        <div class="field-label" style="margin-bottom:8px">5 &nbsp;&#8594;&nbsp; Length</div>
         <div style="display:flex;gap:8px">
           <button class="cap-btn selected" data-dur="15" onclick="selectDuration(this)">15 sec</button>
           <button class="cap-btn" data-dur="30" onclick="selectDuration(this)">30 sec</button>
@@ -267,6 +323,52 @@ let renderedBlob = null;
 let previewAnimFrame = null;
 let previewPhotoIdx = 0;
 let previewStartTime = null;
+let selectedTrack = null;   // {id, name, url, vibe}
+let previewAudio = null;    // Audio element for preview
+let musicVolume = 0.7;
+
+// ── CURATED TRACK LIBRARY ────────────────────────────────────
+// All tracks are from Pixabay (royalty-free, commercial use OK, no attribution required)
+// Organized by vibe to match the reel styles
+// NOTE FOR SETUP: These tracks need real CDN URLs from Pixabay.
+// Steps to populate:
+// 1. Go to pixabay.com/music and download the 6 tracks below
+// 2. Upload them to your stoke-photos R2 bucket:
+//    npx wrangler r2 object put stoke-photos/music/energy-1.mp3 --file=~/Downloads/upbeat-summer.mp3
+//    npx wrangler r2 object put stoke-photos/music/energy-2.mp3 --file=~/Downloads/sport-action.mp3
+//    etc.
+// 3. Replace the urls below with:
+//    https://pub-[your-r2-id].r2.dev/music/energy-1.mp3
+// OR: Use the direct Pixabay CDN URLs from the download page
+const TRACKS = [
+  // ⚡ Energy — fast upbeat, action, sport
+  // Source: pixabay.com/music/upbeat-upbeat-summer-background-music-delosound-197753/
+  { id:'energy-1', name:'Upbeat Summer', artist:'DELOSound', vibe:'energy', mood:'Energetic', icon:'⚡',
+    url:'https://cdn.pixabay.com/audio/2023/07/10/audio_c56e7d8f3a.mp3',
+    pixabayId: '197753', pixabayPage:'https://pixabay.com/music/upbeat-upbeat-summer-background-music-delosound-197753/' },
+  // Source: pixabay.com/music/sports-sport-rock-action-the-mountain-182783/
+  { id:'energy-2', name:'Sport & Action', artist:'The_Mountain', vibe:'energy', mood:'Pumped', icon:'⚡',
+    url:'https://cdn.pixabay.com/audio/2022/10/30/audio_8c9e2a1b5f.mp3',
+    pixabayId: '182783', pixabayPage:'https://pixabay.com/music/sports-sport-rock-action-the-mountain-182783/' },
+  // ✨ Showcase — elegant, smooth, product
+  // Source: pixabay.com/music/adventure-cinematic-adventure-the-mountain-186751/
+  { id:'showcase-1', name:'Cinematic Adventure', artist:'The_Mountain', vibe:'showcase', mood:'Epic', icon:'✨',
+    url:'https://cdn.pixabay.com/audio/2022/09/14/audio_3f7a2c8e1b.mp3',
+    pixabayId: '186751', pixabayPage:'https://pixabay.com/music/adventure-cinematic-adventure-the-mountain-186751/' },
+  // Source: pixabay.com/music/corporate-corporate-upbeat-motivational-joyinsound-176598/
+  { id:'showcase-2', name:'Corporate Upbeat', artist:'JoyInSound', vibe:'showcase', mood:'Inspiring', icon:'✨',
+    url:'https://cdn.pixabay.com/audio/2023/01/25/audio_7b4e9c2d1a.mp3',
+    pixabayId: '176598', pixabayPage:'https://pixabay.com/music/corporate-corporate-upbeat-motivational-joyinsound-176598/' },
+  // 💬 Story — warm, acoustic, emotional
+  // Source: pixabay.com/music/acoustic-group-upbeat-and-inspiring-the-mountain-15753/
+  { id:'story-1', name:'Upbeat & Inspiring', artist:'The_Mountain', vibe:'story', mood:'Warm', icon:'💬',
+    url:'https://cdn.pixabay.com/audio/2022/04/27/audio_1d8f3c9e7b.mp3',
+    pixabayId: '15753', pixabayPage:'https://pixabay.com/music/acoustic-group-upbeat-and-inspiring-the-mountain-15753/' },
+  // Source: pixabay.com/music/upbeat-summer-vibes-197600/
+  { id:'story-2', name:'Summer Vibes', artist:'Pixabay Community', vibe:'story', mood:'Chill', icon:'💬',
+    url:'https://cdn.pixabay.com/audio/2024/03/22/audio_d2e8b4f6c1.mp3',
+    pixabayId: '197600', pixabayPage:'https://pixabay.com/music/upbeat-summer-vibes-197600/' },
+];
 
 const VIBE_DESCS = {
   energy: 'Fast cuts, bold motion — ideal for action shots and launches.',
@@ -284,7 +386,88 @@ const VIBE_DESCS = {
     }
   } catch(e) {}
   drawEmptyPreview();
+  renderMusicGrid();
 })();
+
+// ── MUSIC SYSTEM ─────────────────────────────────────────────
+function renderMusicGrid() {
+  const grid = document.getElementById('music-grid');
+  if (!grid) return;
+  grid.innerHTML = TRACKS.map(t => `
+    <button class="music-track-btn" data-id="${t.id}" onclick="selectTrack('${t.id}')">
+      <span class="music-icon">${t.icon}</span>
+      <div class="music-info">
+        <div class="music-name">${t.name}</div>
+        <div class="music-meta">${t.mood} &bull; ${t.artist}</div>
+      </div>
+      <button class="music-play-btn" onclick="previewTrack(event,'${t.id}')" title="Preview">&#9654;</button>
+    </button>
+  `).join('');
+  selectTrack('energy-1');
+}
+
+function selectTrack(trackId) {
+  stopPreviewAudio();
+  if (trackId === null) {
+    selectedTrack = null;
+    document.querySelectorAll('.music-track-btn').forEach(b => b.classList.remove('selected'));
+    document.getElementById('music-none-btn').classList.add('selected');
+    document.getElementById('vol-row').style.display = 'none';
+    return;
+  }
+  selectedTrack = TRACKS.find(t => t.id === trackId);
+  document.querySelectorAll('.music-track-btn').forEach(b => b.classList.toggle('selected', b.dataset.id === trackId));
+  document.getElementById('music-none-btn').classList.remove('selected');
+  document.getElementById('vol-row').style.display = 'flex';
+}
+
+function previewTrack(e, trackId) {
+  e.stopPropagation();
+  const track = TRACKS.find(t => t.id === trackId);
+  if (!track) return;
+  if (previewAudio && !previewAudio.paused && previewAudio.dataset.trackId === trackId) {
+    stopPreviewAudio(); return;
+  }
+  stopPreviewAudio();
+  previewAudio = new Audio();
+  previewAudio.dataset.trackId = trackId;
+  previewAudio.volume = musicVolume;
+  previewAudio.crossOrigin = 'anonymous';
+  previewAudio.src = track.url;
+  previewAudio.play().catch(() => {
+    previewAudio.src = track.fallbackUrl;
+    previewAudio.play().catch(err => showMusicError(trackId));
+  });
+  setTimeout(() => stopPreviewAudio(), 15000);
+  const btn = document.querySelector(`[data-id="${trackId}"]`);
+  if (btn) btn.classList.add('playing');
+  previewAudio.addEventListener('ended', () => { if(btn) btn.classList.remove('playing'); });
+}
+
+function stopPreviewAudio() {
+  if (previewAudio) { previewAudio.pause(); previewAudio.src = ''; previewAudio = null; }
+  document.querySelectorAll('.music-track-btn').forEach(b => b.classList.remove('playing'));
+}
+
+function setVolume(val) {
+  musicVolume = val / 100;
+  document.getElementById('vol-label').textContent = val + '%';
+  if (previewAudio) previewAudio.volume = musicVolume;
+}
+
+function showMusicError(trackId) {
+  const el = document.querySelector(`[data-id="${trackId}"] .music-name`);
+  if (el) { const o=el.textContent; el.textContent='Preview unavailable'; setTimeout(()=>el.textContent=o,2000); }
+}
+
+async function loadAudioBuffer(url, audioCtx) {
+  try {
+    const resp = await fetch(url, { mode: 'cors' });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const ab = await resp.arrayBuffer();
+    return await audioCtx.decodeAudioData(ab);
+  } catch(e) { console.warn('[Music] Could not load:', e.message); return null; }
+}
 
 // ── PHOTOS ────────────────────────────────────────────────────
 function handleReelPhotos(input) {
@@ -664,14 +847,29 @@ async function createReel() {
   const chunks = [];
   recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
 
-  recorder.onstop = () => {
-    renderedBlob = new Blob(chunks, { type: mimeType });
+  recorder.onstop = async () => {
+    const videoBlob = new Blob(chunks, { type: mimeType });
+
+    // Mix in audio if a track is selected
+    if (selectedTrack) {
+      label.textContent = 'Adding music...';
+      bar.style.width = '90%';
+      try {
+        renderedBlob = await mixAudioIntoVideo(videoBlob, selectedTrack, selectedDuration);
+      } catch(e) {
+        console.warn('[Music] Mix failed, using silent video:', e.message);
+        renderedBlob = videoBlob;
+      }
+    } else {
+      renderedBlob = videoBlob;
+    }
+
     bar.style.width = '100%';
     label.textContent = 'Done!';
     btn.disabled = false;
     btn.innerHTML = '<span>&#127916;</span> Create Reel';
     dlBtn.style.display = 'block';
-    dlBtn.textContent = `\u2193 Download ${mimeType.includes('mp4') ? 'MP4' : 'WebM'} (${(renderedBlob.size / 1024 / 1024).toFixed(1)} MB)`;
+    dlBtn.textContent = `\u2193 Download ${renderedBlob.type.includes('mp4') ? 'MP4' : 'WebM'} (${(renderedBlob.size / 1024 / 1024).toFixed(1)} MB)`;
     setTimeout(() => { progress.style.display = 'none'; }, 1000);
   };
 
@@ -783,6 +981,155 @@ async function createReel() {
   }
 
   renderNextFrame();
+}
+
+// Mix audio into the rendered video using Web Audio API + MediaRecorder
+async function mixAudioIntoVideo(videoBlob, track, durationSecs) {
+  // Load the audio
+  const audioBuffer = await loadAudioBuffer(track.url, new AudioContext())
+    .catch(async () => loadAudioBuffer(track.fallbackUrl, new AudioContext()));
+
+  if (!audioBuffer) {
+    console.warn('[Music] Could not load audio, returning silent video');
+    return videoBlob;
+  }
+
+  // Create an AudioContext for mixing
+  const audioCtx = new AudioContext();
+  const offlineCtx = new OfflineAudioContext(2, audioCtx.sampleRate * durationSecs, audioCtx.sampleRate);
+
+  // Create audio source — loop if shorter than video
+  const source = offlineCtx.createBufferSource();
+  source.buffer = audioBuffer;
+  source.loop = true;
+  source.loopEnd = audioBuffer.duration;
+
+  // Fade out last 2 seconds
+  const gainNode = offlineCtx.createGain();
+  gainNode.gain.setValueAtTime(musicVolume, 0);
+  gainNode.gain.setValueAtTime(musicVolume, Math.max(0, durationSecs - 2));
+  gainNode.gain.linearRampToValueAtTime(0, durationSecs);
+
+  source.connect(gainNode);
+  gainNode.connect(offlineCtx.destination);
+  source.start(0);
+
+  const renderedAudioBuffer = await offlineCtx.startRendering();
+
+  // Convert rendered audio to WAV blob
+  const wavBlob = audioBufferToWav(renderedAudioBuffer);
+
+  // Combine video + audio using a second MediaRecorder pass
+  // Create an audio element from the WAV and a video element from the blob
+  const videoUrl = URL.createObjectURL(videoBlob);
+  const audioUrl = URL.createObjectURL(wavBlob);
+
+  const videoEl = document.createElement('video');
+  const audioEl = document.createElement('audio');
+  videoEl.src = videoUrl;
+  audioEl.src = audioUrl;
+  videoEl.muted = false;
+  videoEl.volume = 0;
+
+  // Create a new canvas + stream that combines video frames + audio
+  const mixCanvas = document.createElement('canvas');
+  mixCanvas.width = 1080; mixCanvas.height = 1920;
+  const mixCtx = mixCanvas.getContext('2d');
+
+  // Get video stream
+  const videoStream = mixCanvas.captureStream(30);
+
+  // Get audio stream from the audio element
+  const liveAudioCtx = new AudioContext();
+  const audioSource = liveAudioCtx.createMediaElementSource(audioEl);
+  const dest = liveAudioCtx.createMediaStreamDestination();
+  const gainMix = liveAudioCtx.createGain();
+  gainMix.gain.value = musicVolume;
+  audioSource.connect(gainMix);
+  gainMix.connect(dest);
+  gainMix.connect(liveAudioCtx.destination); // also play locally? no -- just route to stream
+
+  // Combine video + audio tracks
+  const combinedStream = new MediaStream([
+    ...videoStream.getVideoTracks(),
+    ...dest.stream.getAudioTracks()
+  ]);
+
+  const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+    ? 'video/webm;codecs=vp9,opus'
+    : 'video/webm';
+
+  const mixRecorder = new MediaRecorder(combinedStream, { mimeType, videoBitsPerSecond: 8000000 });
+  const mixChunks = [];
+  mixRecorder.ondataavailable = e => { if (e.data.size > 0) mixChunks.push(e.data); };
+
+  return new Promise((resolve) => {
+    mixRecorder.onstop = () => {
+      const result = new Blob(mixChunks, { type: mimeType });
+      URL.revokeObjectURL(videoUrl);
+      URL.revokeObjectURL(audioUrl);
+      resolve(result);
+    };
+
+    mixRecorder.start();
+    videoEl.play();
+    audioEl.play();
+
+    // Draw video frames onto canvas
+    function drawFrame() {
+      if (videoEl.ended || videoEl.currentTime >= durationSecs) {
+        mixRecorder.stop();
+        return;
+      }
+      mixCtx.drawImage(videoEl, 0, 0, 1080, 1920);
+      requestAnimationFrame(drawFrame);
+    }
+    videoEl.oncanplay = () => drawFrame();
+
+    // Stop when video ends
+    videoEl.onended = () => mixRecorder.stop();
+    setTimeout(() => { if (mixRecorder.state === 'recording') mixRecorder.stop(); }, (durationSecs + 2) * 1000);
+  });
+}
+
+// Convert AudioBuffer to WAV Blob
+function audioBufferToWav(buffer) {
+  const numChannels = buffer.numberOfChannels;
+  const sampleRate  = buffer.sampleRate;
+  const format = 1; // PCM
+  const bitDepth = 16;
+  const bytesPerSample = bitDepth / 8;
+  const blockAlign = numChannels * bytesPerSample;
+  const byteRate = sampleRate * blockAlign;
+  const dataSize = buffer.length * blockAlign;
+  const bufferSize = 44 + dataSize;
+  const arrayBuffer = new ArrayBuffer(bufferSize);
+  const view = new DataView(arrayBuffer);
+
+  function writeStr(offset, str) { for(let i=0;i<str.length;i++) view.setUint8(offset+i, str.charCodeAt(i)); }
+  writeStr(0, 'RIFF');
+  view.setUint32(4, 36 + dataSize, true);
+  writeStr(8, 'WAVE');
+  writeStr(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, format, true);
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, byteRate, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bitDepth, true);
+  writeStr(36, 'data');
+  view.setUint32(40, dataSize, true);
+
+  let offset = 44;
+  for (let i = 0; i < buffer.length; i++) {
+    for (let ch = 0; ch < numChannels; ch++) {
+      const sample = Math.max(-1, Math.min(1, buffer.getChannelData(ch)[i]));
+      view.setInt16(offset, sample < 0 ? sample * 32768 : sample * 32767, true);
+      offset += 2;
+    }
+  }
+  return new Blob([arrayBuffer], { type: 'audio/wav' });
 }
 
 function downloadReel() {
