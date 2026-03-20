@@ -107,6 +107,39 @@ async function handleSaveCampaign(request,env){
   return json({ok:true,id:cid});
 }
 
+// ── EVENTS ─────────────────────────────────────────────────────
+async function handleListEvents(request,env){
+  const s=await requireAuth(request,env);
+  const url=new URL(request.url);
+  const from=url.searchParams.get('from')||Math.floor((Date.now()-30*86400000)/1000);
+  const to=url.searchParams.get('to')||Math.floor((Date.now()+90*86400000)/1000);
+  try{
+    const rows=await env.DB.prepare('SELECT * FROM events WHERE business_id=? AND start_at>=? AND start_at<=? ORDER BY start_at').bind(s.business_id,from,to).all();
+    return json(rows.results||[]);
+  }catch(e){
+    // Table may not exist yet if migration hasn't run
+    return json([]);
+  }
+}
+async function handleSaveEvent(request,env){
+  const s=await requireAuth(request,env);const b=await request.json();
+  const id=b.id||('evt_'+token(8));
+  const startAt=b.start?Math.floor(new Date(b.start).getTime()/1000):Math.floor(b.start_at||Date.now()/1000);
+  const endAt=b.end?Math.floor(new Date(b.end).getTime()/1000):Math.floor(b.end_at||Date.now()/1000);
+  try{
+    await env.DB.prepare('INSERT INTO events(id,business_id,type,title,start_at,end_at,all_day,status,customer_name,customer_email,customer_phone,notes,ai_suggested,ai_notes,created_at,updated_at)VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)ON CONFLICT(id)DO UPDATE SET type=excluded.type,title=excluded.title,start_at=excluded.start_at,end_at=excluded.end_at,status=excluded.status,customer_name=excluded.customer_name,customer_email=excluded.customer_email,customer_phone=excluded.customer_phone,notes=excluded.notes,updated_at=excluded.updated_at').bind(id,s.business_id,b.type||'other',b.title||'',startAt,endAt,b.allDay?1:0,b.status||'confirmed',b.customerName||'',b.customerEmail||'',b.customerPhone||'',b.notes||'',b.aiSuggested?1:0,b.aiNotes||'',now(),now()).run();
+    return json({ok:true,id});
+  }catch(e){
+    console.error('[Events]',e.message);
+    return json({ok:true,id,note:'Saved locally only — run migrate-v2.sql to enable cloud sync'});
+  }
+}
+async function handleParseLead(request,env){
+  const s=await requireAuth(request,env);const b=await request.json();
+  // Parse via Claude and save as a lead + draft event
+  return json({ok:true,message:'Use client-side AI parsing for now'});
+}
+
 // ── AI GENERATION ─────────────────────────────────────────────────────────
 async function handleStream(request,env){
   if(!env.ANTHROPIC_API_KEY)return err('MISSING_API_KEY',500);
@@ -152,6 +185,9 @@ export default {
       if(path==='/api/settings'&&method==='POST')return handleSaveSettings(request,env);
       if(path==='/api/campaigns'&&method==='GET')return handleListCampaigns(request,env);
       if(path==='/api/campaigns'&&method==='POST')return handleSaveCampaign(request,env);
+      if(path==='/api/events'&&method==='GET')return handleListEvents(request,env);
+      if(path==='/api/events'&&method==='POST')return handleSaveEvent(request,env);
+      if(path==='/api/leads/parse'&&method==='POST')return handleParseLead(request,env);
       if(path==='/functions/generate/stream'&&method==='POST')return handleStream(request,env);
       if(path==='/functions/generate'&&method==='POST')return handleGenerate(request,env);
       return env.ASSETS.fetch(request);

@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stoke — Calendar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/stoke.css">
+<style>
+/* ── CALENDAR LAYOUT ──────────────────────────────────────────── */
+.cal-shell { display:flex; gap:0; height:calc(100vh - 120px); min-height:600px; }
+.cal-sidebar { width:240px; flex-shrink:0; border-right:0.5px solid var(--border); padding:1rem; display:flex; flex-direction:column; gap:1rem; overflow-y:auto; }
+.cal-main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.cal-toolbar { display:flex; align-items:center; gap:8px; padding:12px 16px; border-bottom:0.5px solid var(--border); flex-wrap:wrap; }
+.cal-title { font-family:var(--font-serif); font-size:18px; color:var(--text); min-width:160px; }
+.cal-body { flex:1; overflow:auto; position:relative; }
+
+/* Toolbar buttons */
+.cal-nav-btn { width:32px; height:32px; border:0.5px solid var(--border); border-radius:var(--radius); background:var(--bg); color:var(--text-2); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:14px; transition:all .15s; }
+.cal-nav-btn:hover { border-color:var(--green); color:var(--green); }
+.view-btn { padding:6px 12px; border:0.5px solid var(--border); border-radius:var(--radius); background:var(--bg-2); color:var(--text-2); font-family:var(--font-body); font-size:11px; font-weight:500; cursor:pointer; transition:all .15s; }
+.view-btn.active { background:var(--green); color:white; border-color:var(--green); }
+.view-btn:not(.active):hover { border-color:var(--green); color:var(--green); }
+.today-btn { padding:6px 12px; border:0.5px solid var(--green); border-radius:var(--radius); background:none; color:var(--green); font-family:var(--font-body); font-size:11px; font-weight:500; cursor:pointer; }
+.new-event-btn { padding:7px 14px; background:var(--green); color:white; border:none; border-radius:var(--radius); font-family:var(--font-body); font-size:12px; font-weight:500; cursor:pointer; margin-left:auto; display:flex; align-items:center; gap:5px; }
+
+/* Month view */
+.month-grid { display:grid; grid-template-columns:repeat(7,1fr); height:100%; }
+.month-day-header { padding:6px 8px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:var(--text-3); border-bottom:0.5px solid var(--border); border-right:0.5px solid var(--border); background:var(--bg-2); text-align:center; }
+.month-cell { border-right:0.5px solid var(--border); border-bottom:0.5px solid var(--border); padding:4px; min-height:90px; position:relative; background:var(--bg); transition:background .1s; overflow:hidden; }
+.month-cell.other-month { background:var(--bg-2); opacity:.6; }
+.month-cell.today { background:rgba(26,107,74,0.04); }
+.month-cell.today .month-date { background:var(--green); color:white; border-radius:50%; width:22px; height:22px; display:flex; align-items:center; justify-content:center; }
+.month-date { font-size:11px; font-weight:500; color:var(--text-2); margin-bottom:2px; width:22px; height:22px; display:flex; align-items:center; justify-content:center; }
+.month-cell .event-chip { font-size:10px; font-weight:500; padding:1px 5px; border-radius:3px; color:white; margin-bottom:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; transition:opacity .1s; display:block; }
+.month-cell .event-chip:hover { opacity:.85; }
+.month-cell .more-events { font-size:9px; color:var(--text-3); padding:0 4px; cursor:pointer; }
+.month-cell.drag-over { background:var(--green-light) !important; outline:1.5px dashed var(--green); outline-offset:-2px; }
+
+/* Week view */
+.week-grid { display:grid; grid-template-columns:52px repeat(7,1fr); min-width:700px; }
+.week-time-gutter { border-right:0.5px solid var(--border); }
+.week-header-row { display:contents; }
+.week-day-header { padding:8px 4px; text-align:center; border-bottom:0.5px solid var(--border); border-right:0.5px solid var(--border); background:var(--bg-2); position:sticky; top:0; z-index:5; }
+.week-day-name { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:var(--text-3); }
+.week-day-num { font-size:20px; font-family:var(--font-serif); color:var(--text); margin-top:2px; }
+.week-day-header.today .week-day-num { color:var(--green); }
+.week-time-label { height:48px; padding-right:8px; font-size:9px; color:var(--text-3); text-align:right; display:flex; align-items:flex-start; padding-top:2px; border-right:0.5px solid var(--border); border-bottom:0.5px solid rgba(0,0,0,0.04); }
+.week-cell { height:48px; border-right:0.5px solid var(--border); border-bottom:0.5px solid rgba(0,0,0,0.04); position:relative; cursor:pointer; transition:background .1s; }
+.week-cell:hover { background:var(--green-light); }
+.week-cell.today-col { background:rgba(26,107,74,0.025); }
+.week-cell.drag-over { background:var(--green-light) !important; }
+
+/* Event blocks in week/day view */
+.week-event { position:absolute; left:2px; right:2px; border-radius:4px; padding:2px 5px; font-size:10px; font-weight:500; color:white; cursor:pointer; overflow:hidden; z-index:2; box-shadow:0 1px 3px rgba(0,0,0,0.2); transition:opacity .1s; }
+.week-event:hover { opacity:.9; z-index:3; }
+.week-event-title { font-size:10px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.week-event-time { font-size:9px; opacity:.85; }
+
+/* Day view */
+.day-grid { display:grid; grid-template-columns:52px 1fr; }
+
+/* Agenda view */
+.agenda-list { padding:1rem; }
+.agenda-date-group { margin-bottom:1.5rem; }
+.agenda-date-label { font-size:12px; font-weight:600; color:var(--text-3); margin-bottom:6px; padding-bottom:4px; border-bottom:0.5px solid var(--border); }
+.agenda-date-label.today-label { color:var(--green); }
+.agenda-event-row { display:flex; gap:10px; align-items:flex-start; padding:6px 8px; border-radius:var(--radius); margin-bottom:4px; cursor:pointer; transition:background .15s; }
+.agenda-event-row:hover { background:var(--bg-2); }
+.agenda-event-time { font-size:11px; color:var(--text-3); min-width:70px; flex-shrink:0; }
+.agenda-event-dot { width:8px; height:8px; border-radius:50%; margin-top:3px; flex-shrink:0; }
+.agenda-event-info { flex:1; }
+.agenda-event-title { font-size:13px; font-weight:500; color:var(--text); }
+.agenda-event-sub { font-size:11px; color:var(--text-3); margin-top:1px; }
+
+/* Sidebar mini calendar */
+.mini-cal { }
+.mini-cal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.mini-cal-title { font-size:12px; font-weight:500; color:var(--text); }
+.mini-nav { width:22px; height:22px; border:none; background:none; cursor:pointer; color:var(--text-3); font-size:12px; display:flex; align-items:center; justify-content:center; border-radius:4px; }
+.mini-nav:hover { background:var(--bg-2); }
+.mini-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:1px; }
+.mini-day-head { font-size:8px; font-weight:600; color:var(--text-3); text-align:center; padding:2px 0; }
+.mini-day { font-size:10px; text-align:center; padding:3px 2px; cursor:pointer; border-radius:4px; color:var(--text-2); }
+.mini-day:hover { background:var(--green-light); color:var(--green); }
+.mini-day.today { background:var(--green); color:white; border-radius:50%; }
+.mini-day.selected { background:var(--green-light); color:var(--green); font-weight:600; }
+.mini-day.other-month { opacity:.35; }
+.mini-day.has-events { font-weight:600; color:var(--text); }
+
+/* Sidebar: filters */
+.sidebar-section { }
+.sidebar-label { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--text-3); margin-bottom:8px; }
+.filter-item { display:flex; align-items:center; gap:7px; padding:4px 0; cursor:pointer; }
+.filter-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.filter-name { font-size:12px; color:var(--text-2); }
+.filter-item.hidden .filter-name { text-decoration:line-through; opacity:.5; }
+
+/* Sidebar: upcoming */
+.upcoming-item { padding:7px 0; border-bottom:0.5px solid var(--border); cursor:pointer; }
+.upcoming-item:last-child { border-bottom:none; }
+.upcoming-date { font-size:9px; font-weight:600; text-transform:uppercase; color:var(--text-3); }
+.upcoming-title { font-size:12px; font-weight:500; color:var(--text); margin-top:1px; }
+.upcoming-meta { font-size:10px; color:var(--text-3); }
+
+/* AI suggestion banner */
+.ai-banner { background:var(--green-light); border:0.5px solid var(--green); border-radius:var(--radius); padding:10px 12px; margin:0 16px 12px; display:none; font-size:12px; color:var(--green); line-height:1.5; }
+.ai-banner-btns { display:flex; gap:6px; margin-top:8px; }
+.ai-accept-btn { padding:5px 12px; background:var(--green); color:white; border:none; border-radius:5px; font-size:11px; font-weight:500; cursor:pointer; }
+.ai-dismiss-btn { padding:5px 12px; background:none; border:0.5px solid var(--green); color:var(--green); border-radius:5px; font-size:11px; cursor:pointer; }
+
+/* Event modal */
+.event-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.3); z-index:200; }
+.event-modal { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:var(--bg); border:0.5px solid var(--border); border-radius:16px; padding:0; width:480px; max-width:95vw; max-height:90vh; overflow-y:auto; z-index:201; box-shadow:0 16px 60px rgba(0,0,0,0.15); }
+.modal-header { padding:1.25rem 1.5rem 0; display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; }
+.modal-title { font-family:var(--font-serif); font-size:20px; color:var(--text); }
+.modal-close { width:28px; height:28px; border:none; background:none; cursor:pointer; color:var(--text-3); font-size:18px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.modal-close:hover { background:var(--bg-2); }
+.modal-body { padding:1.25rem 1.5rem; }
+.modal-footer { padding:.75rem 1.5rem 1.25rem; display:flex; gap:8px; justify-content:flex-end; border-top:0.5px solid var(--border); }
+.modal-field { margin-bottom:1rem; }
+.modal-field label { display:block; font-size:11px; font-weight:600; color:var(--text-3); margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em; }
+.modal-field input, .modal-field select, .modal-field textarea {
+  width:100%; padding:9px 11px; font-size:13px; font-family:var(--font-body);
+  border:0.5px solid var(--border-2); border-radius:var(--radius);
+  background:var(--bg); color:var(--text); outline:none; transition:border-color .15s;
+}
+.modal-field input:focus, .modal-field select:focus, .modal-field textarea:focus { border-color:var(--green); }
+.modal-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.type-badge { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:500; color:white; margin-bottom:.75rem; }
+.modal-save-btn { padding:10px 20px; background:var(--green); color:white; border:none; border-radius:var(--radius); font-family:var(--font-body); font-size:13px; font-weight:500; cursor:pointer; }
+.modal-delete-btn { padding:10px 16px; background:none; border:0.5px solid var(--border); border-radius:var(--radius); color:var(--text-3); font-family:var(--font-body); font-size:13px; cursor:pointer; }
+.modal-delete-btn:hover { border-color:#c0392b; color:#c0392b; }
+.modal-cancel-btn { padding:10px 16px; background:none; border:0.5px solid var(--border); border-radius:var(--radius); color:var(--text-2); font-family:var(--font-body); font-size:13px; cursor:pointer; }
+.ai-draft-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 8px; background:rgba(26,107,74,0.1); color:var(--green); border-radius:20px; font-size:10px; font-weight:600; margin-left:8px; }
+</style>
+</head>
+<body>
+<div class="app" style="padding-bottom:0">
+
+  <div class="header">
+    <div class="logo"><svg viewBox="0 0 20 20" fill="none" width="22" height="22"><path d="M10 2C10 2 4 8 4 12a6 6 0 0012 0c0-4-6-10-6-10z" fill="white" opacity=".95"/><path d="M10 8c0 0-2 3-2 5a2 2 0 004 0c0-2-2-5-2-5z" fill="white" opacity=".45"/></svg></div>
+    <span class="wordmark">Stoke</span>
+    <span class="version-badge">v8</span>
+    <span class="tagline" style="margin-left:auto;display:flex;gap:8px;align-items:center">
+      <a href="index.html" style="font-size:12px;color:var(--green);text-decoration:none;font-weight:500">&#8592; Generator</a>
+      <a href="schedule.html" style="font-size:12px;color:var(--text-3);text-decoration:none;padding:4px 10px;border:0.5px solid var(--border);border-radius:20px">&#128197; Posts</a>
+      <span id="auth-indicator" style="display:none;font-size:11px;color:var(--green);background:var(--green-light);padding:3px 10px;border-radius:20px;border:0.5px solid var(--green)"></span>
+    </span>
+  </div>
+
+  <!-- AI suggestion banner (shows when AI creates a draft event) -->
+  <div class="ai-banner" id="ai-banner">
+    <strong>&#10024; AI Lead Captured</strong> &mdash; <span id="ai-banner-text"></span>
+    <div class="ai-banner-btns">
+      <button class="ai-accept-btn" onclick="acceptAISuggestion()">&#10003; Confirm Appointment</button>
+      <button class="ai-dismiss-btn" onclick="dismissAIBanner()">Edit first</button>
+    </div>
+  </div>
+
+  <div class="cal-shell">
+
+    <!-- ── SIDEBAR ──────────────────────────────────────────── -->
+    <div class="cal-sidebar">
+
+      <!-- Mini calendar -->
+      <div class="mini-cal">
+        <div class="mini-cal-header">
+          <button class="mini-nav" onclick="miniNav(-1)">&#8249;</button>
+          <div class="mini-cal-title" id="mini-title"></div>
+          <button class="mini-nav" onclick="miniNav(1)">&#8250;</button>
+        </div>
+        <div class="mini-grid" id="mini-grid"></div>
+      </div>
+
+      <!-- Event type filters -->
+      <div class="sidebar-section">
+        <div class="sidebar-label">Event Types</div>
+        <div id="type-filters"></div>
+      </div>
+
+      <!-- Upcoming events -->
+      <div class="sidebar-section" style="flex:1;overflow-y:auto">
+        <div class="sidebar-label">Upcoming</div>
+        <div id="upcoming-list"></div>
+      </div>
+
+      <!-- AI lead parser -->
+      <div class="sidebar-section">
+        <div class="sidebar-label">&#10024; AI Lead Parser</div>
+        <textarea id="lead-input" rows="3" placeholder="Paste an email or inquiry here..." style="width:100%;font-size:11px;font-family:var(--font-body);border:0.5px solid var(--border-2);border-radius:var(--radius);background:var(--bg);color:var(--text);padding:8px;resize:vertical;outline:none;margin-bottom:6px"></textarea>
+        <button onclick="parseLead()" style="width:100%;padding:8px;background:var(--green);color:white;border:none;border-radius:var(--radius);font-family:var(--font-body);font-size:11px;font-weight:500;cursor:pointer" id="parse-btn">&#10024; Parse &amp; Create Event</button>
+      </div>
+
+    </div>
+
+    <!-- ── MAIN CALENDAR ────────────────────────────────────── -->
+    <div class="cal-main">
+
+      <!-- Toolbar -->
+      <div class="cal-toolbar">
+        <button class="cal-nav-btn" onclick="navigate(-1)">&#8249;</button>
+        <button class="cal-nav-btn" onclick="navigate(1)">&#8250;</button>
+        <div class="cal-title" id="cal-title"></div>
+        <button class="today-btn" onclick="goToday()">Today</button>
+        <div style="display:flex;gap:4px;margin-left:8px">
+          <button class="view-btn active" id="view-month" onclick="setView('month')">Month</button>
+          <button class="view-btn" id="view-week" onclick="setView('week')">Week</button>
+          <button class="view-btn" id="view-day" onclick="setView('day')">Day</button>
+          <button class="view-btn" id="view-agenda" onclick="setView('agenda')">Agenda</button>
+        </div>
+        <button class="new-event-btn" onclick="openNewEventModal()">+ New Event</button>
+      </div>
+
+      <!-- Calendar body -->
+      <div class="cal-body" id="cal-body"></div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Event Modal -->
+<div class="event-modal-overlay" id="modal-overlay" onclick="closeModal()"></div>
+<div class="event-modal" id="event-modal" style="display:none">
+  <div class="modal-header">
+    <div>
+      <div class="modal-title" id="modal-title">New Event</div>
+      <span class="ai-draft-badge" id="ai-draft-badge" style="display:none">&#10024; AI Draft</span>
+    </div>
+    <button class="modal-close" onclick="closeModal()">&#x2715;</button>
+  </div>
+  <div class="modal-body">
+    <input type="hidden" id="modal-event-id">
+
+    <div class="modal-field">
+      <label>Event Title</label>
+      <input type="text" id="modal-event-title" placeholder="e.g. Kayak rental — Smith family">
+    </div>
+
+    <div class="modal-field">
+      <label>Type</label>
+      <select id="modal-event-type" onchange="updateTypeColor()">
+        <option value="rental">Rental / Tour</option>
+        <option value="rigging">Rigging / Repair</option>
+        <option value="lesson">Lesson</option>
+        <option value="sailboat">Sailboat</option>
+        <option value="social">Social Media Post</option>
+        <option value="blocked">Blocked Time</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>Date</label>
+        <input type="date" id="modal-date">
+      </div>
+      <div class="modal-field" id="allday-field">
+        <label>&nbsp;</label>
+        <label style="display:flex;align-items:center;gap:6px;padding:9px 0;font-size:12px;color:var(--text-2);text-transform:none;letter-spacing:0;font-weight:400">
+          <input type="checkbox" id="modal-allday" onchange="toggleAllDay()"> All day
+        </label>
+      </div>
+    </div>
+
+    <div class="modal-row" id="time-row">
+      <div class="modal-field">
+        <label>Start Time</label>
+        <input type="time" id="modal-start-time" value="09:00" onchange="autoEndTime()">
+      </div>
+      <div class="modal-field">
+        <label>End Time</label>
+        <input type="time" id="modal-end-time" value="11:00">
+      </div>
+    </div>
+
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>Customer Name</label>
+        <input type="text" id="modal-customer-name" placeholder="Full name">
+      </div>
+      <div class="modal-field">
+        <label>Phone</label>
+        <input type="tel" id="modal-customer-phone" placeholder="(252) 555-0100">
+      </div>
+    </div>
+
+    <div class="modal-field">
+      <label>Customer Email</label>
+      <input type="email" id="modal-customer-email" placeholder="customer@email.com">
+    </div>
+
+    <div class="modal-field">
+      <label>Notes</label>
+      <textarea id="modal-notes" rows="2" placeholder="Special requests, equipment needed, etc."></textarea>
+    </div>
+
+    <div class="modal-row" id="pricing-row">
+      <div class="modal-field">
+        <label>Quoted Amount</label>
+        <input type="number" id="modal-amount" placeholder="0.00" step="0.01">
+      </div>
+      <div class="modal-field">
+        <label>Status</label>
+        <select id="modal-status">
+          <option value="confirmed">Confirmed</option>
+          <option value="tentative">Tentative</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="ai-notes-row" style="display:none;padding:8px 10px;background:var(--green-light);border-radius:var(--radius);font-size:11px;color:var(--green);line-height:1.5;margin-top:4px">
+      <strong>&#10024; AI extracted:</strong> <span id="ai-notes-text"></span>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="modal-delete-btn" id="modal-delete-btn" onclick="deleteEvent()" style="display:none">Delete</button>
+    <button class="modal-cancel-btn" onclick="closeModal()">Cancel</button>
+    <button class="modal-save-btn" onclick="saveEvent()">Save Event</button>
+  </div>
+</div>
+
+<script>
+// ── CONSTANTS ─────────────────────────────────────────────────
+const TYPE_COLORS = {
+  rental:   '#2196F3',
+  rigging:  '#FF6D00',
+  lesson:   '#2E7D32',
+  sailboat: '#6A1B9A',
+  social:   '#1a6b4a',
+  blocked:  '#616161',
+  other:    '#888888',
+};
+const TYPE_LABELS = {
+  rental: 'Rental / Tour', rigging: 'Rigging / Repair',
+  lesson: 'Lesson', sailboat: 'Sailboat',
+  social: 'Social Post', blocked: 'Blocked', other: 'Other',
+};
+const TYPE_DURATIONS = {
+  rental: 120, rigging: 480, lesson: 90, sailboat: 120, social: 60, blocked: 60, other: 60,
+};
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+// ── STATE ─────────────────────────────────────────────────────
+let currentView = 'month';
+let viewDate = new Date();
+let events = [];      // all loaded events
+let hiddenTypes = {}; // {type: true} if hidden
+let editingEventId = null;
+let aiPendingEvent = null;
+let miniDate = new Date();
+let dragEventId = null;
+
+// ── AUTH ──────────────────────────────────────────────────────
+(async function init() {
+  try {
+    const me = await fetch('/auth/me').then(r => r.json());
+    if (me.authenticated) {
+      const el = document.getElementById('auth-indicator');
+      if (el) { el.textContent = me.user?.name; el.style.display = 'inline-flex'; }
+    }
+  } catch(e) {}
+  loadEvents();
+  renderMiniCal();
+  renderTypeFilters();
+})();
+
+// ── EVENTS DATA ───────────────────────────────────────────────
+async function loadEvents() {
+  // Load from API (D1) if authenticated, fall back to localStorage
+  try {
+    const resp = await fetch('/api/events', { credentials: 'include' });
+    if (resp.ok) {
+      const data = await resp.json();
+      events = data.map(deserializeEvent);
+    } else {
+      events = loadLocalEvents();
+    }
+  } catch(e) {
+    events = loadLocalEvents();
+  }
+  // Always also load social posts from campaign history
+  loadSocialPosts();
+  renderCalendar();
+  renderUpcoming();
+}
+
+function loadLocalEvents() {
+  try { return JSON.parse(localStorage.getItem('stoke_events') || '[]').map(deserializeEvent); }
+  catch(e) { return []; }
+}
+function saveLocalEvents() {
+  localStorage.setItem('stoke_events', JSON.stringify(events.map(e => ({...e, start: e.start.getTime(), end: e.end.getTime()}))));
+}
+function deserializeEvent(e) {
+  return { ...e, start: new Date(typeof e.start === 'number' ? e.start : (e.start_at ? e.start_at * 1000 : e.start)), end: new Date(typeof e.end === 'number' ? e.end : (e.end_at ? e.end_at * 1000 : e.end)) };
+}
+
+function loadSocialPosts() {
+  // Pull scheduled posts from campaign history and show on calendar
+  try {
+    const history = JSON.parse(localStorage.getItem('stoke_history') || '[]');
+    const postEvents = [];
+    history.forEach(entry => {
+      (entry.campaign || []).forEach(day => {
+        if (!day.scheduledDateStr) return;
+        const date = new Date(day.scheduledDateStr);
+        (day.posts || []).filter(p => p.status === 'scheduled' || p.status === 'approved').forEach(post => {
+          const id = `social_${entry.id}_${day.day}_${post.channel}`;
+          if (!events.find(e => e.id === id)) {
+            postEvents.push({
+              id, type: 'social',
+              title: `${post.channel}: ${(post.text || '').substring(0,30)}…`,
+              start: date, end: new Date(date.getTime() + 60*60*1000),
+              allDay: false, status: post.status, color: TYPE_COLORS.social,
+              notes: post.text, readOnly: true,
+            });
+          }
+        });
+      });
+    });
+    events = [...events.filter(e => e.type !== 'social' || !e.id.startsWith('social_')), ...postEvents];
+  } catch(e) {}
+}
+
+function genId() { return 'evt_' + Math.random().toString(36).substr(2,10); }
+
+// ── CALENDAR RENDERING ─────────────────────────────────────────
+function renderCalendar() {
+  updateTitle();
+  const body = document.getElementById('cal-body');
+  if (currentView === 'month')  renderMonth(body);
+  else if (currentView === 'week')  renderWeek(body);
+  else if (currentView === 'day')   renderDay(body);
+  else if (currentView === 'agenda') renderAgenda(body);
+  renderUpcoming();
+}
+
+function updateTitle() {
+  const t = document.getElementById('cal-title');
+  if (currentView === 'month') t.textContent = `${MONTHS[viewDate.getMonth()]} ${viewDate.getFullYear()}`;
+  else if (currentView === 'week') {
+    const days = getWeekDates(viewDate);
+    const f = days[0], l = days[6];
+    t.textContent = f.getMonth() === l.getMonth()
+      ? `${MONTHS[f.getMonth()]} ${f.getDate()}–${l.getDate()}, ${f.getFullYear()}`
+      : `${MONTHS[f.getMonth()]} ${f.getDate()} – ${MONTHS[l.getMonth()]} ${l.getDate()}, ${l.getFullYear()}`;
+  }
+  else if (currentView === 'day') t.textContent = `${DAYS[viewDate.getDay()]}, ${MONTHS[viewDate.getMonth()]} ${viewDate.getDate()}, ${viewDate.getFullYear()}`;
+  else t.textContent = 'Agenda';
+}
+
+// ── MONTH VIEW ────────────────────────────────────────────────
+function renderMonth(body) {
+  const year = viewDate.getFullYear(), month = viewDate.getMonth();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const daysInPrev  = new Date(year, month, 0).getDate();
+  const totalCells  = Math.ceil((firstDay + daysInMonth) / 7) * 7;
+
+  let html = '<div class="month-grid" style="height:100%">';
+  DAYS.forEach(d => html += `<div class="month-day-header">${d}</div>`);
+
+  for (let i = 0; i < totalCells; i++) {
+    let cellDate, isOther = false;
+    if (i < firstDay) { cellDate = new Date(year, month-1, daysInPrev - firstDay + i + 1); isOther = true; }
+    else if (i >= firstDay + daysInMonth) { cellDate = new Date(year, month+1, i - firstDay - daysInMonth + 1); isOther = true; }
+    else { cellDate = new Date(year, month, i - firstDay + 1); }
+
+    const isToday = cellDate.toDateString() === today.toDateString();
+    const dayEvents = getEventsForDay(cellDate).filter(e => !hiddenTypes[e.type]);
+    const dateKey = cellDate.toISOString().slice(0,10);
+
+    html += `<div class="month-cell${isOther?' other-month':''}${isToday?' today':''}" 
+      data-date="${dateKey}"
+      onclick="handleCellClick('${dateKey}')"
+      ondragover="event.preventDefault();this.classList.add('drag-over')"
+      ondragleave="this.classList.remove('drag-over')"
+      ondrop="dropOnDate(event,'${dateKey}')">
+      <div class="month-date">${cellDate.getDate()}</div>`;
+
+    const maxShow = 3;
+    dayEvents.slice(0, maxShow).forEach(evt => {
+      const color = evt.color || TYPE_COLORS[evt.type] || '#888';
+      html += `<span class="event-chip" style="background:${color}" 
+        onclick="event.stopPropagation();openEventModal('${evt.id}')"
+        draggable="true"
+        ondragstart="startDrag(event,'${evt.id}')"
+        ondragend="endDrag(event)"
+        title="${esc(evt.title)}">${esc(evt.title)}</span>`;
+    });
+    if (dayEvents.length > maxShow) {
+      html += `<div class="more-events" onclick="event.stopPropagation();setView('day');viewDate=new Date('${dateKey}');renderCalendar()">+${dayEvents.length - maxShow} more</div>`;
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+  body.innerHTML = html;
+}
+
+// ── WEEK VIEW ─────────────────────────────────────────────────
+function renderWeek(body) {
+  const days = getWeekDates(viewDate);
+  const today = new Date().toDateString();
+  const HOURS = Array.from({length:24}, (_,i) => i);
+
+  let html = `<div class="week-grid" style="min-height:${HOURS.length*48}px">`;
+  // Sticky header row
+  html += `<div class="week-time-gutter" style="position:sticky;top:0;z-index:5;background:var(--bg-2);border-bottom:0.5px solid var(--border)"></div>`;
+  days.forEach(d => {
+    const isToday = d.toDateString() === today;
+    html += `<div class="week-day-header${isToday?' today':''}">
+      <div class="week-day-name">${DAYS[d.getDay()]}</div>
+      <div class="week-day-num">${d.getDate()}</div>
+    </div>`;
+  });
+
+  // Time rows
+  HOURS.forEach(h => {
+    const label = h === 0 ? '' : h < 12 ? `${h}am` : h === 12 ? '12pm' : `${h-12}pm`;
+    html += `<div class="week-time-label">${label}</div>`;
+    days.forEach(d => {
+      const isToday = d.toDateString() === today;
+      const dateKey = d.toISOString().slice(0,10);
+      const timeKey = `${dateKey}T${String(h).padStart(2,'0')}:00`;
+      html += `<div class="week-cell${isToday?' today-col':''}"
+        onclick="openNewEventModalAt('${dateKey}','${String(h).padStart(2,'0')}:00')"
+        ondragover="event.preventDefault();this.classList.add('drag-over')"
+        ondragleave="this.classList.remove('drag-over')"
+        ondrop="dropOnDateTime(event,'${dateKey}',${h})"></div>`;
+    });
+  });
+
+  html += '</div>';
+  body.innerHTML = html;
+
+  // Now position event blocks absolutely
+  days.forEach((d, di) => {
+    const dayEvents = getEventsForDay(d).filter(e => !hiddenTypes[e.type] && !e.allDay);
+    dayEvents.forEach(evt => {
+      const startH = evt.start.getHours() + evt.start.getMinutes()/60;
+      const endH   = evt.end.getHours()   + evt.end.getMinutes()/60;
+      const top    = (startH * 48) + 48; // 48px per hour, offset by header
+      const height = Math.max((endH - startH) * 48, 20);
+      const color  = evt.color || TYPE_COLORS[evt.type] || '#888';
+      const col = body.querySelectorAll('.week-cell')[di]; // find first cell of this day
+      if (!col) return;
+      const colRect = col ? null : null;
+
+      // Create floating event block
+      const colIdx = di; // column index 0-6
+      const el = document.createElement('div');
+      el.className = 'week-event';
+      el.style.cssText = `background:${color};top:${top}px;height:${height}px;z-index:3`;
+      el.innerHTML = `<div class="week-event-title">${esc(evt.title)}</div>
+        <div class="week-event-time">${formatTime(evt.start)}</div>`;
+      el.onclick = (e) => { e.stopPropagation(); openEventModal(evt.id); };
+      el.draggable = true;
+      el.addEventListener('dragstart', e => { e.stopPropagation(); startDrag(e, evt.id); });
+
+      // Position in the correct column
+      const colEls = body.querySelectorAll('.week-cell');
+      // Each hour has 7 cells. Column di is at positions di, 7+di, 14+di, etc.
+      // The grid column for day di is di+1 (1-indexed, after time gutter)
+      const weekGrid = body.querySelector('.week-grid');
+      if (weekGrid) {
+        el.style.gridColumn = `${di + 2}`;
+        el.style.gridRow = '1';
+        el.style.position = 'absolute';
+
+        // Find the column offset
+        const gridRect = weekGrid.getBoundingClientRect();
+        const cellWidth = (weekGrid.offsetWidth - 52) / 7;
+        el.style.left = `${52 + di * cellWidth + 2}px`;
+        el.style.width = `${cellWidth - 4}px`;
+        el.style.position = 'absolute';
+        weekGrid.style.position = 'relative';
+        weekGrid.appendChild(el);
+      }
+    });
+  });
+}
+
+// ── DAY VIEW ──────────────────────────────────────────────────
+function renderDay(body) {
+  const today = new Date().toDateString();
+  const isToday = viewDate.toDateString() === today;
+  const dateKey = viewDate.toISOString().slice(0,10);
+  const HOURS = Array.from({length:24}, (_,i) => i);
+  const dayEvents = getEventsForDay(viewDate).filter(e => !hiddenTypes[e.type]);
+
+  let html = `<div class="day-grid" style="min-height:${HOURS.length*48}px">`;
+  // Header
+  html += `<div style="border-bottom:0.5px solid var(--border);background:var(--bg-2);position:sticky;top:0;z-index:5"></div>`;
+  html += `<div class="week-day-header${isToday?' today':''}" style="position:sticky;top:0;z-index:5;border-right:none">
+    <div class="week-day-name">${DAYS[viewDate.getDay()]}</div>
+    <div class="week-day-num">${viewDate.getDate()}</div>
+  </div>`;
+
+  HOURS.forEach(h => {
+    const label = h === 0 ? '' : h < 12 ? `${h}am` : h === 12 ? '12pm' : `${h-12}pm`;
+    html += `<div class="week-time-label">${label}</div>`;
+    html += `<div class="week-cell${isToday?' today-col':''}"
+      onclick="openNewEventModalAt('${dateKey}','${String(h).padStart(2,'0')}:00')"></div>`;
+  });
+  html += '</div>';
+  body.innerHTML = html;
+
+  // Position events
+  const dayGrid = body.querySelector('.day-grid');
+  if (dayGrid) {
+    dayGrid.style.position = 'relative';
+    dayEvents.filter(e => !e.allDay).forEach(evt => {
+      const startH = evt.start.getHours() + evt.start.getMinutes()/60;
+      const endH   = evt.end.getHours()   + evt.end.getMinutes()/60;
+      const top    = (startH * 48) + 48;
+      const height = Math.max((endH - startH) * 48, 24);
+      const color  = evt.color || TYPE_COLORS[evt.type] || '#888';
+      const el = document.createElement('div');
+      el.className = 'week-event';
+      el.style.cssText = `background:${color};top:${top}px;height:${height}px;left:56px;right:8px;width:auto`;
+      el.innerHTML = `<div class="week-event-title">${esc(evt.title)}</div>
+        <div class="week-event-time">${formatTime(evt.start)} – ${formatTime(evt.end)}</div>
+        ${evt.customerName ? `<div class="week-event-time">${esc(evt.customerName)}</div>` : ''}`;
+      el.onclick = () => openEventModal(evt.id);
+      dayGrid.appendChild(el);
+    });
+  }
+}
+
+// ── AGENDA VIEW ───────────────────────────────────────────────
+function renderAgenda(body) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const upcoming = events
+    .filter(e => e.start >= today && !hiddenTypes[e.type])
+    .sort((a,b) => a.start - b.start)
+    .slice(0, 50);
+
+  if (upcoming.length === 0) {
+    body.innerHTML = '<div style="padding:3rem;text-align:center;color:var(--text-3);font-size:13px">No upcoming events. <a href="#" onclick="openNewEventModal();return false" style="color:var(--green)">Create one →</a></div>';
+    return;
+  }
+
+  // Group by date
+  const groups = {};
+  upcoming.forEach(e => {
+    const k = e.start.toDateString();
+    if (!groups[k]) groups[k] = [];
+    groups[k].push(e);
+  });
+
+  let html = '<div class="agenda-list">';
+  Object.entries(groups).forEach(([dateStr, evts]) => {
+    const d = new Date(dateStr);
+    const isToday = d.toDateString() === new Date().toDateString();
+    const label = isToday ? 'Today' : `${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+    html += `<div class="agenda-date-group">
+      <div class="agenda-date-label${isToday?' today-label':''}">${label}</div>`;
+    evts.forEach(evt => {
+      const color = evt.color || TYPE_COLORS[evt.type] || '#888';
+      const timeStr = evt.allDay ? 'All day' : `${formatTime(evt.start)} – ${formatTime(evt.end)}`;
+      html += `<div class="agenda-event-row" onclick="openEventModal('${evt.id}')">
+        <div class="agenda-event-time">${timeStr}</div>
+        <div class="agenda-event-dot" style="background:${color}"></div>
+        <div class="agenda-event-info">
+          <div class="agenda-event-title">${esc(evt.title)}</div>
+          <div class="agenda-event-sub">${TYPE_LABELS[evt.type]||evt.type}${evt.customerName?` · ${esc(evt.customerName)}`:''}</div>
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+  });
+  html += '</div>';
+  body.innerHTML = html;
+}
+
+// ── MINI CALENDAR ─────────────────────────────────────────────
+function renderMiniCal() {
+  document.getElementById('mini-title').textContent = `${MONTHS[miniDate.getMonth()].substring(0,3)} ${miniDate.getFullYear()}`;
+  const year = miniDate.getFullYear(), month = miniDate.getMonth();
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const today = new Date().toDateString();
+  const selected = viewDate.toDateString();
+
+  let html = DAYS.map(d => `<div class="mini-day-head">${d[0]}</div>`).join('');
+  for (let i = 0; i < firstDay; i++) html += '<div class="mini-day other-month"></div>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(year, month, d);
+    const isToday = date.toDateString() === today;
+    const isSel   = date.toDateString() === selected;
+    const hasEvts = events.some(e => e.start.toDateString() === date.toDateString());
+    const key = date.toISOString().slice(0,10);
+    html += `<div class="mini-day${isToday?' today':''}${isSel&&!isToday?' selected':''}${hasEvts?' has-events':''}" 
+      onclick="miniDayClick('${key}')">${d}</div>`;
+  }
+  document.getElementById('mini-grid').innerHTML = html;
+}
+function miniNav(dir) { miniDate = new Date(miniDate.getFullYear(), miniDate.getMonth()+dir, 1); renderMiniCal(); }
+function miniDayClick(dateKey) {
+  viewDate = new Date(dateKey + 'T12:00:00');
+  if (currentView === 'month') { viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1); }
+  renderCalendar(); renderMiniCal();
+}
+
+// ── TYPE FILTERS ──────────────────────────────────────────────
+function renderTypeFilters() {
+  const el = document.getElementById('type-filters');
+  el.innerHTML = Object.entries(TYPE_LABELS).map(([type, label]) => `
+    <div class="filter-item${hiddenTypes[type]?' hidden':''}" onclick="toggleType('${type}')">
+      <div class="filter-dot" style="background:${TYPE_COLORS[type]}"></div>
+      <div class="filter-name">${label}</div>
+    </div>`).join('');
+}
+function toggleType(type) {
+  hiddenTypes[type] = !hiddenTypes[type];
+  renderTypeFilters();
+  renderCalendar();
+}
+
+// ── UPCOMING LIST ─────────────────────────────────────────────
+function renderUpcoming() {
+  const now = new Date();
+  const el = document.getElementById('upcoming-list');
+  const upcoming = events
+    .filter(e => e.start >= now && !hiddenTypes[e.type])
+    .sort((a,b) => a.start - b.start)
+    .slice(0, 8);
+  if (upcoming.length === 0) { el.innerHTML = '<div style="font-size:11px;color:var(--text-3)">No upcoming events</div>'; return; }
+  el.innerHTML = upcoming.map(e => {
+    const color = e.color || TYPE_COLORS[e.type] || '#888';
+    return `<div class="upcoming-item" onclick="openEventModal('${e.id}')">
+      <div class="upcoming-date" style="color:${color}">${formatShortDate(e.start)}</div>
+      <div class="upcoming-title">${esc(e.title)}</div>
+      <div class="upcoming-meta">${formatTime(e.start)}${e.customerName?' · '+esc(e.customerName):''}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── NAVIGATION ────────────────────────────────────────────────
+function navigate(dir) {
+  if (currentView === 'month') viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()+dir, 1);
+  else if (currentView === 'week') viewDate = new Date(viewDate.getTime() + dir*7*86400000);
+  else if (currentView === 'day')  viewDate = new Date(viewDate.getTime() + dir*86400000);
+  else if (currentView === 'agenda') { viewDate = new Date(viewDate.getTime() + dir*30*86400000); }
+  renderCalendar(); renderMiniCal();
+}
+function goToday() { viewDate = new Date(); if(currentView==='month') viewDate=new Date(viewDate.getFullYear(),viewDate.getMonth(),1); renderCalendar(); renderMiniCal(); }
+function setView(view) {
+  currentView = view;
+  ['month','week','day','agenda'].forEach(v => document.getElementById('view-'+v).classList.toggle('active', v===view));
+  renderCalendar();
+}
+
+// ── DRAG AND DROP ─────────────────────────────────────────────
+function startDrag(e, id) { dragEventId = id; setTimeout(() => e.target.style.opacity = '0.4', 0); }
+function endDrag(e) { e.target.style.opacity = '1'; dragEventId = null; }
+function dropOnDate(e, dateKey) {
+  e.preventDefault();
+  e.target.classList.remove('drag-over');
+  if (!dragEventId) return;
+  const evt = events.find(ev => ev.id === dragEventId);
+  if (!evt || evt.readOnly) return;
+  const newDate = new Date(dateKey + 'T12:00:00');
+  const duration = evt.end - evt.start;
+  evt.start = new Date(newDate.getFullYear(), newDate.getMonth(), newDate.getDate(), evt.start.getHours(), evt.start.getMinutes());
+  evt.end = new Date(evt.start.getTime() + duration);
+  saveLocalEvents();
+  renderCalendar();
+}
+function dropOnDateTime(e, dateKey, hour) {
+  e.preventDefault();
+  e.target.classList.remove('drag-over');
+  if (!dragEventId) return;
+  const evt = events.find(ev => ev.id === dragEventId);
+  if (!evt || evt.readOnly) return;
+  const duration = evt.end - evt.start;
+  evt.start = new Date(`${dateKey}T${String(hour).padStart(2,'0')}:00:00`);
+  evt.end = new Date(evt.start.getTime() + duration);
+  saveLocalEvents();
+  renderCalendar();
+}
+
+// ── EVENT MODAL ───────────────────────────────────────────────
+function handleCellClick(dateKey) {
+  openNewEventModalAt(dateKey, '09:00');
+}
+function openNewEventModal() {
+  const today = new Date();
+  openNewEventModalAt(today.toISOString().slice(0,10), '09:00');
+}
+function openNewEventModalAt(dateKey, startTime) {
+  editingEventId = null;
+  document.getElementById('modal-title').textContent = 'New Event';
+  document.getElementById('modal-delete-btn').style.display = 'none';
+  document.getElementById('ai-draft-badge').style.display = 'none';
+  document.getElementById('ai-notes-row').style.display = 'none';
+  document.getElementById('modal-event-id').value = '';
+  document.getElementById('modal-event-title').value = '';
+  document.getElementById('modal-event-type').value = 'rental';
+  document.getElementById('modal-date').value = dateKey;
+  document.getElementById('modal-start-time').value = startTime;
+  const [h,m] = startTime.split(':').map(Number);
+  const endH = h+2; document.getElementById('modal-end-time').value = `${String(endH>23?23:endH).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  document.getElementById('modal-allday').checked = false;
+  document.getElementById('time-row').style.display = 'grid';
+  document.getElementById('modal-customer-name').value = '';
+  document.getElementById('modal-customer-email').value = '';
+  document.getElementById('modal-customer-phone').value = '';
+  document.getElementById('modal-notes').value = '';
+  document.getElementById('modal-amount').value = '';
+  document.getElementById('modal-status').value = 'confirmed';
+  showModal();
+}
+function openEventModal(id) {
+  const evt = events.find(e => e.id === id);
+  if (!evt) return;
+  editingEventId = id;
+  document.getElementById('modal-title').textContent = 'Edit Event';
+  document.getElementById('modal-delete-btn').style.display = evt.readOnly ? 'none' : 'block';
+  document.getElementById('ai-draft-badge').style.display = evt.aiSuggested ? 'inline-flex' : 'none';
+  document.getElementById('modal-event-id').value = id;
+  document.getElementById('modal-event-title').value = evt.title;
+  document.getElementById('modal-event-type').value = evt.type || 'other';
+  document.getElementById('modal-date').value = evt.start.toISOString().slice(0,10);
+  document.getElementById('modal-start-time').value = `${String(evt.start.getHours()).padStart(2,'0')}:${String(evt.start.getMinutes()).padStart(2,'0')}`;
+  document.getElementById('modal-end-time').value   = `${String(evt.end.getHours()).padStart(2,'0')}:${String(evt.end.getMinutes()).padStart(2,'0')}`;
+  document.getElementById('modal-allday').checked = !!evt.allDay;
+  document.getElementById('time-row').style.display = evt.allDay ? 'none' : 'grid';
+  document.getElementById('modal-customer-name').value  = evt.customerName || '';
+  document.getElementById('modal-customer-email').value = evt.customerEmail || '';
+  document.getElementById('modal-customer-phone').value = evt.customerPhone || '';
+  document.getElementById('modal-notes').value = evt.notes || '';
+  document.getElementById('modal-amount').value = evt.amount || '';
+  document.getElementById('modal-status').value = evt.status || 'confirmed';
+  if (evt.aiNotes) { document.getElementById('ai-notes-text').textContent = evt.aiNotes; document.getElementById('ai-notes-row').style.display = 'block'; }
+  else { document.getElementById('ai-notes-row').style.display = 'none'; }
+  showModal();
+}
+function showModal() {
+  document.getElementById('event-modal').style.display = 'block';
+  document.getElementById('modal-overlay').style.display = 'block';
+  setTimeout(() => document.getElementById('modal-event-title').focus(), 100);
+}
+function closeModal() {
+  document.getElementById('event-modal').style.display = 'none';
+  document.getElementById('modal-overlay').style.display = 'none';
+  editingEventId = null;
+}
+function toggleAllDay() {
+  document.getElementById('time-row').style.display = document.getElementById('modal-allday').checked ? 'none' : 'grid';
+}
+function autoEndTime() {
+  const type = document.getElementById('modal-event-type').value;
+  const dur = TYPE_DURATIONS[type] || 120;
+  const [h,m] = document.getElementById('modal-start-time').value.split(':').map(Number);
+  const endMins = h*60+m+dur;
+  const endH = Math.min(Math.floor(endMins/60), 23), endM = endMins%60;
+  document.getElementById('modal-end-time').value = `${String(endH).padStart(2,'0')}:${String(endM).padStart(2,'0')}`;
+}
+function updateTypeColor() { autoEndTime(); }
+function saveEvent() {
+  const id = document.getElementById('modal-event-id').value || genId();
+  const dateKey = document.getElementById('modal-date').value;
+  const allDay = document.getElementById('modal-allday').checked;
+  const startTime = document.getElementById('modal-start-time').value;
+  const endTime   = document.getElementById('modal-end-time').value;
+  const start = allDay ? new Date(dateKey+'T00:00:00') : new Date(`${dateKey}T${startTime}`);
+  const end   = allDay ? new Date(dateKey+'T23:59:59') : new Date(`${dateKey}T${endTime}`);
+  const evt = {
+    id, type: document.getElementById('modal-event-type').value,
+    title: document.getElementById('modal-event-title').value || 'Untitled',
+    start, end, allDay,
+    status: document.getElementById('modal-status').value,
+    customerName:  document.getElementById('modal-customer-name').value,
+    customerEmail: document.getElementById('modal-customer-email').value,
+    customerPhone: document.getElementById('modal-customer-phone').value,
+    notes:  document.getElementById('modal-notes').value,
+    amount: parseFloat(document.getElementById('modal-amount').value) || null,
+    color: null, aiSuggested: false,
+    createdAt: new Date().toISOString(),
+  };
+  const idx = events.findIndex(e => e.id === id);
+  if (idx >= 0) events[idx] = {...events[idx], ...evt};
+  else events.push(evt);
+  saveLocalEvents();
+  // Also save to D1 if authenticated
+  saveEventToAPI(evt);
+  closeModal();
+  renderCalendar();
+  renderMiniCal();
+}
+async function saveEventToAPI(evt) {
+  try {
+    await fetch('/api/events', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+      body: JSON.stringify({...evt, start: evt.start.getTime(), end: evt.end.getTime()}) });
+  } catch(e) { /* localStorage fallback already done */ }
+}
+function deleteEvent() {
+  if (!editingEventId || !confirm('Delete this event?')) return;
+  events = events.filter(e => e.id !== editingEventId);
+  saveLocalEvents();
+  closeModal();
+  renderCalendar();
+  renderMiniCal();
+}
+
+// ── AI LEAD PARSER ────────────────────────────────────────────
+async function parseLead() {
+  const input = document.getElementById('lead-input').value.trim();
+  if (!input) { alert('Paste an email or inquiry to parse.'); return; }
+  const btn = document.getElementById('parse-btn');
+  btn.disabled = true; btn.textContent = '✦ Analyzing...';
+  try {
+    let settings = {};
+    try { settings = JSON.parse(localStorage.getItem('stoke_settings') || '{}'); } catch(e) {}
+    const today = new Date().toLocaleDateString('en-US', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
+    const prompt = `You are the AI assistant for ${settings.business?.name || 'Trusty Sail & Paddle'}, a kayak and sailboat shop in ${settings.business?.city || 'Morehead City, NC'}.
+
+A customer inquiry has come in. Extract the booking details and respond ONLY with valid JSON — no markdown, no backticks, no explanation:
+
+{
+  "customerName": "full name or null",
+  "customerEmail": "email or null",
+  "customerPhone": "phone or null",
+  "serviceType": "rental|rigging|lesson|sailboat|repair|other",
+  "title": "short calendar title e.g. 'Kayak rental — Smith family'",
+  "preferredDate": "YYYY-MM-DD if mentioned, else null",
+  "preferredTime": "HH:MM in 24h if mentioned, else '09:00'",
+  "durationHours": number (estimate based on service type),
+  "notes": "key details from the message",
+  "urgency": "high|normal|low",
+  "summary": "one sentence summary of the request",
+  "estimatedAmount": number or null
+}
+
+Today is ${today}.
+
+SERVICE TYPE GUIDE for this business:
+- rental: kayak or sailboat rental, guided tour
+- rigging: custom rigging build, rod holders, fish finders, motor mounts
+- lesson: kayak lesson, sailing lesson, instruction
+- sailboat: sailboat purchase demo, Topper/Topaz inquiry
+- repair: kayak repair, service, maintenance
+- other: anything else
+
+CUSTOMER INQUIRY:
+${input}`;
+
+    const resp = await fetch('/functions/generate', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ messages: [{ role:'user', content:[{type:'text',text:prompt}] }] })
+    });
+    const data = await resp.json();
+    const raw = data.content?.[0]?.text?.trim() || '';
+    const parsed = JSON.parse(raw.replace(/```json|```/g,'').trim());
+
+    // Build the event from AI extraction
+    const dateKey = parsed.preferredDate || new Date().toISOString().slice(0,10);
+    const startTime = parsed.preferredTime || '09:00';
+    const [h,m] = startTime.split(':').map(Number);
+    const durationMins = (parsed.durationHours || TYPE_DURATIONS[parsed.serviceType] / 60 || 2) * 60;
+    const endMins = h*60+m+durationMins;
+    const endH = Math.min(Math.floor(endMins/60),23), endM = endMins%60;
+    const endTime = `${String(endH).padStart(2,'0')}:${String(endM).padStart(2,'0')}`;
+
+    const evt = {
+      id: genId(), type: parsed.serviceType || 'other',
+      title: parsed.title || 'New Inquiry',
+      start: new Date(`${dateKey}T${startTime}`),
+      end:   new Date(`${dateKey}T${endTime}`),
+      allDay: false, status: 'tentative',
+      customerName: parsed.customerName || '',
+      customerEmail: parsed.customerEmail || '',
+      customerPhone: parsed.customerPhone || '',
+      notes: parsed.notes || input.substring(0,200),
+      amount: parsed.estimatedAmount || null,
+      aiSuggested: true,
+      aiNotes: parsed.summary,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Store as pending AI suggestion
+    aiPendingEvent = evt;
+
+    // Show banner
+    document.getElementById('ai-banner-text').textContent =
+      `${parsed.title} — ${parsed.preferredDate ? new Date(dateKey+'T12:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) : 'date TBD'} at ${formatTime(evt.start)}. ${parsed.summary}`;
+    document.getElementById('ai-banner').style.display = 'block';
+
+    // Pre-fill modal for review
+    openNewEventModalAt(dateKey, startTime);
+    document.getElementById('modal-event-title').value = evt.title;
+    document.getElementById('modal-event-type').value = evt.type;
+    document.getElementById('modal-end-time').value = endTime;
+    document.getElementById('modal-customer-name').value = evt.customerName;
+    document.getElementById('modal-customer-email').value = evt.customerEmail;
+    document.getElementById('modal-customer-phone').value = evt.customerPhone;
+    document.getElementById('modal-notes').value = evt.notes;
+    if (evt.amount) document.getElementById('modal-amount').value = evt.amount;
+    document.getElementById('modal-status').value = 'tentative';
+    document.getElementById('ai-notes-text').textContent = parsed.summary;
+    document.getElementById('ai-notes-row').style.display = 'block';
+    document.getElementById('ai-draft-badge').style.display = 'inline-flex';
+    document.getElementById('lead-input').value = '';
+
+  } catch(e) {
+    console.error('[AI Lead]', e);
+    alert('Could not parse the lead. Try again or create the event manually.');
+  }
+  btn.disabled = false; btn.textContent = '✦ Parse & Create Event';
+}
+
+function acceptAISuggestion() {
+  if (!aiPendingEvent) return;
+  events.push(aiPendingEvent);
+  saveLocalEvents();
+  saveEventToAPI(aiPendingEvent);
+  aiPendingEvent = null;
+  dismissAIBanner();
+  closeModal();
+  renderCalendar();
+  renderMiniCal();
+}
+function dismissAIBanner() {
+  document.getElementById('ai-banner').style.display = 'none';
+  aiPendingEvent = null;
+}
+
+// ── UTILS ─────────────────────────────────────────────────────
+function getEventsForDay(date) {
+  const d = date.toDateString();
+  return events.filter(e => e.start.toDateString() === d || (e.allDay && e.start <= date && e.end >= date));
+}
+function getWeekDates(date) {
+  const start = new Date(date); start.setDate(date.getDate() - date.getDay());
+  return Array.from({length:7}, (_,i) => { const d=new Date(start); d.setDate(start.getDate()+i); return d; });
+}
+function formatTime(d) {
+  const h=d.getHours(), m=d.getMinutes();
+  return `${h===0?12:h>12?h-12:h}:${String(m).padStart(2,'0')}${h<12?'am':'pm'}`;
+}
+function formatShortDate(d) {
+  const today=new Date().toDateString(),tomorrow=new Date(Date.now()+86400000).toDateString();
+  if(d.toDateString()===today)return'Today';
+  if(d.toDateString()===tomorrow)return'Tomorrow';
+  return `${DAYS[d.getDay()]} ${MONTHS[d.getMonth()].substring(0,3)} ${d.getDate()}`;
+}
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+</script>
+</body>
+</html>
