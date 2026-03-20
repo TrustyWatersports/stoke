@@ -330,44 +330,33 @@ let musicVolume = 0.7;
 // ── CURATED TRACK LIBRARY ────────────────────────────────────
 // All tracks are from Pixabay (royalty-free, commercial use OK, no attribution required)
 // Organized by vibe to match the reel styles
-// NOTE FOR SETUP: These tracks need real CDN URLs from Pixabay.
-// Steps to populate:
-// 1. Go to pixabay.com/music and download the 6 tracks below
-// 2. Upload them to your stoke-photos R2 bucket:
-//    npx wrangler r2 object put stoke-photos/music/energy-1.mp3 --file=~/Downloads/upbeat-summer.mp3
-//    npx wrangler r2 object put stoke-photos/music/energy-2.mp3 --file=~/Downloads/sport-action.mp3
-//    etc.
-// 3. Replace the urls below with:
-//    https://pub-[your-r2-id].r2.dev/music/energy-1.mp3
-// OR: Use the direct Pixabay CDN URLs from the download page
+// All tracks hosted in R2 stoke-photos bucket under /music/
+// Uploaded via upload-music.ps1 from Pixabay downloads (royalty-free, commercial OK)
+// URL format: https://[R2-PUBLIC-URL]/music/filename.mp3
+// TODO: Replace R2_BASE with your actual R2 public bucket URL after running:
+//   npx wrangler r2 bucket domain stoke-photos
+const R2_BASE = 'https://pub-65e64be6022a4780b28fa38b6258b190.r2.dev';
+
 const TRACKS = [
-  // ⚡ Energy — fast upbeat, action, sport
-  // Source: pixabay.com/music/upbeat-upbeat-summer-background-music-delosound-197753/
-  { id:'energy-1', name:'Upbeat Summer', artist:'DELOSound', vibe:'energy', mood:'Energetic', icon:'⚡',
-    url:'https://cdn.pixabay.com/audio/2023/07/10/audio_c56e7d8f3a.mp3',
-    pixabayId: '197753', pixabayPage:'https://pixabay.com/music/upbeat-upbeat-summer-background-music-delosound-197753/' },
-  // Source: pixabay.com/music/sports-sport-rock-action-the-mountain-182783/
-  { id:'energy-2', name:'Sport & Action', artist:'The_Mountain', vibe:'energy', mood:'Pumped', icon:'⚡',
-    url:'https://cdn.pixabay.com/audio/2022/10/30/audio_8c9e2a1b5f.mp3',
-    pixabayId: '182783', pixabayPage:'https://pixabay.com/music/sports-sport-rock-action-the-mountain-182783/' },
-  // ✨ Showcase — elegant, smooth, product
-  // Source: pixabay.com/music/adventure-cinematic-adventure-the-mountain-186751/
-  { id:'showcase-1', name:'Cinematic Adventure', artist:'The_Mountain', vibe:'showcase', mood:'Epic', icon:'✨',
-    url:'https://cdn.pixabay.com/audio/2022/09/14/audio_3f7a2c8e1b.mp3',
-    pixabayId: '186751', pixabayPage:'https://pixabay.com/music/adventure-cinematic-adventure-the-mountain-186751/' },
-  // Source: pixabay.com/music/corporate-corporate-upbeat-motivational-joyinsound-176598/
-  { id:'showcase-2', name:'Corporate Upbeat', artist:'JoyInSound', vibe:'showcase', mood:'Inspiring', icon:'✨',
-    url:'https://cdn.pixabay.com/audio/2023/01/25/audio_7b4e9c2d1a.mp3',
-    pixabayId: '176598', pixabayPage:'https://pixabay.com/music/corporate-corporate-upbeat-motivational-joyinsound-176598/' },
-  // 💬 Story — warm, acoustic, emotional
-  // Source: pixabay.com/music/acoustic-group-upbeat-and-inspiring-the-mountain-15753/
-  { id:'story-1', name:'Upbeat & Inspiring', artist:'The_Mountain', vibe:'story', mood:'Warm', icon:'💬',
-    url:'https://cdn.pixabay.com/audio/2022/04/27/audio_1d8f3c9e7b.mp3',
-    pixabayId: '15753', pixabayPage:'https://pixabay.com/music/acoustic-group-upbeat-and-inspiring-the-mountain-15753/' },
-  // Source: pixabay.com/music/upbeat-summer-vibes-197600/
-  { id:'story-2', name:'Summer Vibes', artist:'Pixabay Community', vibe:'story', mood:'Chill', icon:'💬',
-    url:'https://cdn.pixabay.com/audio/2024/03/22/audio_d2e8b4f6c1.mp3',
-    pixabayId: '197600', pixabayPage:'https://pixabay.com/music/upbeat-summer-vibes-197600/' },
+  // ⚡ Energy — fast, punchy, action
+  { id:'energy-1', name:'Sport Rock Trailer', artist:'Alex Grohl', vibe:'energy', mood:'Pumped', icon:'⚡',
+    url:`${R2_BASE}/music/sport-rock-trailer.mp3` },
+  { id:'energy-2', name:'Energetic Action', artist:'Alex Grohl', vibe:'energy', mood:'Intense', icon:'⚡',
+    url:`${R2_BASE}/music/energetic-action.mp3` },
+  { id:'energy-3', name:'Gorila', artist:'Alex Makemusic', vibe:'energy', mood:'Raw', icon:'⚡',
+    url:`${R2_BASE}/music/gorila.mp3` },
+  // ✨ Showcase — smooth, professional, polished
+  { id:'showcase-1', name:'Upbeat Corporate', artist:'KornevMusic', vibe:'showcase', mood:'Bright', icon:'✨',
+    url:`${R2_BASE}/music/upbeat-corporate.mp3` },
+  { id:'showcase-2', name:'Stylish Electronic', artist:'Nveravetyan Music', vibe:'showcase', mood:'Cool', icon:'✨',
+    url:`${R2_BASE}/music/stylish-electronic.mp3` },
+  // 💬 Story — warm, flowing, emotional
+  { id:'story-1', name:'Organic Flow', artist:'Aberrant Realities', vibe:'story', mood:'Flowing', icon:'💬',
+    url:`${R2_BASE}/music/organic-flow.mp3` },
+  { id:'story-2', name:'Running Night', artist:'Alex Makemusic', vibe:'story', mood:'Atmospheric', icon:'💬',
+    url:`${R2_BASE}/music/running-night.mp3` },
+  { id:'story-3', name:'Fresh', artist:'Bransboynd', vibe:'story', mood:'Chill', icon:'💬',
+    url:`${R2_BASE}/music/fresh.mp3` },
 ];
 
 const VIBE_DESCS = {
