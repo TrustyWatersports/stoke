@@ -59,7 +59,7 @@
     <div class="header-divider"></div>
     <nav class="header-nav">
       <a href="dashboard.html" class="nav-pill">&#127968; Home</a>
-      <a href="index.html" class="nav-pill">&#9997; Generate</a>
+      <a href="app.html" class="nav-pill">&#9997; Generate</a>
       <a href="schedule.html" class="nav-pill active">&#128197; Posts</a>
       <a href="reel-maker.html" class="nav-pill">&#127916; Reels</a>
       <a href="calendar.html" class="nav-pill">&#128198; Calendar</a>
@@ -177,7 +177,7 @@ function renderWeek(){
 
   if(posts.length===0){
     const e=document.createElement('div');e.className='sched-empty';
-    e.innerHTML='No posts yet. <a href="index.html">Generate a campaign \u2192</a>';
+    e.innerHTML='No posts yet. <a href="app.html">Generate a campaign \u2192</a>';
     grid.appendChild(e);return;
   }
 

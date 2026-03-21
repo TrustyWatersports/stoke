@@ -1,0 +1,322 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stoke — Turn your work into growth</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/stoke.css">
+<style>
+/* ── v8.2 additions ── */
+.stream-status {
+  display:none;
+  align-items:center;
+  gap:8px;
+  padding:10px 14px;
+  background:var(--green-light);
+  border:0.5px solid var(--green);
+  border-radius:var(--radius);
+  font-size:12px;
+  color:var(--green);
+  font-weight:500;
+  margin-bottom:1rem;
+  animation: pulse-border 2s infinite;
+}
+@keyframes pulse-border {
+  0%,100% { border-color: var(--green); }
+  50%      { border-color: transparent; }
+}
+.photo-label {
+  position:absolute;
+  bottom:0; left:0; right:0;
+  background:rgba(0,0,0,0.55);
+  color:#fff;
+  font-size:9px;
+  font-weight:500;
+  text-align:center;
+  padding:2px 0;
+  border-radius:0 0 var(--radius) var(--radius);
+}
+.photo-strip-item {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:2px;
+  cursor:pointer;
+}
+.photo-strip-item.featured .photo-strip-thumb { border:2.5px solid var(--green); }
+.photo-strip-label {
+  font-size:9px;
+  color:var(--text-3);
+  font-weight:500;
+}
+.photo-strip-item.featured .photo-strip-label { color:var(--green); }
+.featured-photo-label {
+  font-size:11px;
+  color:var(--text-3);
+  padding:4px 14px 6px;
+  font-style:italic;
+}
+.cal-cell.drag-over {
+  border-color:var(--green) !important;
+  background:var(--green-light) !important;
+  box-shadow:0 0 0 2px rgba(26,107,74,0.2);
+}
+.day-section[draggable="true"] .day-badge { cursor:grab; }
+.day-section[draggable="true"] .day-badge::before { content:'⠿ '; opacity:0.4; font-size:12px; }
+.content-card.dragging { opacity:0.4; transform:scale(0.98); }
+.day-section.drop-target { outline:2px dashed var(--green); outline-offset:4px; border-radius:var(--radius); background:var(--green-light); }
+.drag-card-handle { color:var(--text-3); cursor:grab; font-size:14px; margin-right:4px; flex-shrink:0; }
+.drag-card-handle:hover { color:var(--green); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── HEADER ─────────────────────────────────────────── -->
+  <div class="header">
+    <a href="dashboard.html" class="header-home">
+      <div class="logo"><svg viewBox="0 0 20 20" fill="none" width="20" height="20"><path d="M10 2C10 2 4 8 4 12a6 6 0 0012 0c0-4-6-10-6-10z" fill="white" opacity=".95"/><path d="M10 8c0 0-2 3-2 5a2 2 0 004 0c0-2-2-5-2-5z" fill="white" opacity=".45"/></svg></div>
+      <span class="wordmark">Stoke</span>
+    </a>
+    <div class="header-divider"></div>
+    <nav class="header-nav">
+      <a href="dashboard.html" class="nav-pill">&#127968; Home</a>
+      <a href="app.html" class="nav-pill active">&#9997; Generate</a>
+      <a href="schedule.html" class="nav-pill">&#128197; Posts</a>
+      <a href="reel-maker.html" class="nav-pill">&#127916; Reels</a>
+      <a href="calendar.html" class="nav-pill">&#128198; Calendar</a>
+      <a href="invoices.html" class="nav-pill">&#129534; Invoices</a>
+      <div style="width:1px;height:16px;background:var(--border-2);margin:0 2px;flex-shrink:0"></div>
+      <a href="settings.html" class="nav-pill-icon" title="Settings">&#9881;</a>
+      <a href="voice-wizard.html" class="nav-pill-icon" title="Voice Profile">&#10024;</a>
+      <span id="auth-indicator" class="auth-badge" style="display:none"></span>
+    </nav>
+  </div>
+
+  <!-- ── FORM ───────────────────────────────────────────── -->
+  <div id="form-section">
+
+    <!-- PHOTOS -->
+    <div class="field-group">
+      <span class="section-label">Photos</span>
+      <label class="field-label" for="photo-input">Add job photos</label>
+      <span class="field-hint">AI analyzes your images and weaves what it sees into every post. Upload up to 6.</span>
+      <div class="photo-zone" id="photo-zone">
+        <input type="file" id="photo-input" accept="image/jpeg,image/jpg,image/png,image/heic,image/heif,image/*"
+               multiple onchange="handlePhotoSelect(event)" aria-label="Upload job photos">
+        <svg style="width:40px;height:40px;color:var(--text-3);margin:0 auto 10px;display:block" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+          <rect x="3" y="10" width="34" height="24" rx="4" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="20" cy="22" r="6" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M14 10l2.5-5h7l2.5 5" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+        <p style="font-size:14px;font-weight:500;color:var(--text-2)">Click to upload or drag photos here</p>
+        <p style="font-size:12px;color:var(--text-3);margin-top:4px">JPG, PNG, HEIC — up to 6 photos</p>
+      </div>
+      <div class="photo-previews" id="photo-previews" role="list" aria-label="Uploaded photos"></div>
+      <div id="photo-count"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- JOB TYPE -->
+    <div class="field-group">
+      <span class="section-label">Job details</span>
+      <label class="field-label">
+        Job type
+        <span class="field-label-sub">(select all that apply)</span>
+        <span class="selection-count" id="job-type-count"></span>
+      </label>
+      <!-- Populated dynamically from settings by stoke.js applySettingsToForm() -->
+      <div class="toggle-grid toggle-grid-3" id="job-type-grid" role="group" aria-label="Job type"></div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label" for="customer-moment">Customer moment</label>
+      <span class="field-hint">Who was the customer, what brought them in, anything memorable</span>
+      <textarea id="customer-moment" rows="3"
+        placeholder="e.g. Brett drove 2.5 hours, tried three boats back to back..."></textarea>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label" for="products-used">Key products or components</label>
+      <input type="text" id="products-used"
+        placeholder="e.g. Native Slayer LTE, Topaz Argo, YakAttack GearTrac...">
+    </div>
+
+    <div class="field-group">
+      <label class="field-label" for="problem-solved">What problem did this solve?</label>
+      <input type="text" id="problem-solved"
+        placeholder="e.g. Try before you buy, tournament-ready setup...">
+    </div>
+
+    <div class="field-group">
+      <label class="field-label" for="extra-details">Anything else worth capturing?</label>
+      <textarea id="extra-details" rows="2"
+        placeholder="Weather, results, reactions, quotes, before/after..."></textarea>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- OUTPUT CHANNELS -->
+    <div class="field-group">
+      <label class="field-label">
+        Output channels
+        <span class="field-label-sub">(select all you want)</span>
+        <span class="selection-count" id="channel-count">4 selected</span>
+      </label>
+      <span class="field-hint">Choose which platforms to generate content for</span>
+      <div class="toggle-grid toggle-grid-4" role="group" aria-label="Output channels">
+        <button class="toggle-btn selected" data-channel="INSTAGRAM" onclick="toggleChannel(this)">
+          Instagram<small>Caption + hashtags</small>
+        </button>
+        <button class="toggle-btn selected" data-channel="FACEBOOK" onclick="toggleChannel(this)">
+          Facebook<small>Long-form post</small>
+        </button>
+        <button class="toggle-btn" data-channel="TIKTOK" onclick="toggleChannel(this)">
+          TikTok / Reels<small>Video script</small>
+        </button>
+        <button class="toggle-btn selected" data-channel="GOOGLE" onclick="toggleChannel(this)">
+          Google Business<small>Business update</small>
+        </button>
+        <button class="toggle-btn selected" data-channel="EMAIL" onclick="toggleChannel(this)">
+          Customer Email<small>Follow-up email</small>
+        </button>
+        <button class="toggle-btn" data-channel="YOUTUBE" onclick="toggleChannel(this)">
+          YouTube Shorts<small>Video script</small>
+        </button>
+      </div>
+    </div>
+
+    <!-- WRITING STYLE -->
+    <div class="field-group">
+      <label class="field-label">Writing style</label>
+      <div class="toggle-grid toggle-grid-2" role="group" aria-label="Writing style">
+        <button id="tone-general" class="toggle-btn selected" onclick="selectTone('general')"
+                style="text-align:left;padding:10px 12px">
+          <span style="font-weight:500;display:block;margin-bottom:2px">General</span>
+          <span style="font-size:11px;color:var(--text-3)">Clear, specific, results-driven. Grows new followers.</span>
+        </button>
+        <button id="tone-personal" class="toggle-btn" onclick="selectTone('personal')"
+                style="text-align:left;padding:10px 12px">
+          <span style="font-weight:500;display:block;margin-bottom:2px">Personal</span>
+          <span style="font-size:11px;color:var(--text-3)">Story-driven, Heather's full voice. Deepens loyalty.</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- CAMPAIGN LENGTH -->
+    <div class="field-group">
+      <label class="field-label">Campaign length</label>
+      <span class="field-hint">Posts spread across this many days from the start date</span>
+      <div class="toggle-grid toggle-grid-4" role="group" aria-label="Campaign length">
+        <button class="toggle-btn" data-days="1"  onclick="selectCampaignLength(this)">
+          1 Day<small>Immediate</small>
+        </button>
+        <button class="toggle-btn selected" data-days="3" onclick="selectCampaignLength(this)">
+          3 Days<small>Short burst</small>
+        </button>
+        <button class="toggle-btn" data-days="7"  onclick="selectCampaignLength(this)">
+          1 Week<small>Steady drip</small>
+        </button>
+        <button class="toggle-btn" data-days="14" onclick="selectCampaignLength(this)">
+          2 Weeks<small>Full campaign</small>
+        </button>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label" for="start-date">Start date</label>
+      <input type="text" id="start-date" value="Today"
+             style="max-width:220px" placeholder="e.g. Today, Monday, March 24...">
+    </div>
+
+    <button class="generate-btn" id="generate-btn"
+            onclick="event.preventDefault(); generateContent()">
+      <span id="btn-label">Generate content campaign</span>
+      <span class="photo-pill" id="photo-indicator" style="display:none" aria-live="polite"></span>
+    </button>
+
+    <div class="error-msg" id="error-msg" role="alert" aria-live="assertive"></div>
+  </div><!-- /form-section -->
+
+  <!-- ── LOADING ─────────────────────────────────────────── -->
+  <div class="loading-state" id="loading-state" role="status" aria-live="polite">
+    <div class="loading-photo-strip" id="loading-photo-strip"></div>
+    <div class="loading-dots" aria-hidden="true">
+      <div class="loading-dot"></div>
+      <div class="loading-dot"></div>
+      <div class="loading-dot"></div>
+    </div>
+    <p class="loading-text" id="loading-text">Building your campaign...</p>
+    <div class="skeleton-grid">
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card" style="height:60px;opacity:.7"></div>
+      <div class="skeleton-card" style="height:60px;opacity:.4"></div>
+    </div>
+  </div>
+
+  <!-- ── RESULTS ─────────────────────────────────────────── -->
+  <div class="results-section" id="results-section">
+
+    <div class="results-header">
+      <span class="results-title">Your content campaign</span>
+      <button class="reset-btn" onclick="resetForm()">New job</button>
+    </div>
+    <p class="results-subtitle" id="results-subtitle"></p>
+
+    <!-- Calendar -->
+    <div class="calendar-wrap" id="calendar-wrap">
+      <div class="cal-header" id="cal-header" aria-hidden="true"></div>
+      <div class="calendar-grid" id="calendar-grid" role="grid" aria-label="Campaign calendar"></div>
+      <p class="cal-hint">Click a highlighted day to view its posts</p>
+    </div>
+
+    <!-- Streaming status -->
+    <div class="stream-status" id="stream-status">✦ Writing your campaign...</div>
+
+    <!-- Post list -->
+    <div class="campaign-nav">
+      <span class="campaign-count" id="campaign-count" aria-live="polite"></span>
+      <button class="bulk-approve-btn" onclick="approveAll()">Approve all</button>
+    </div>
+    <div id="posts-list"></div>
+
+  </div><!-- /results-section -->
+
+</div><!-- /app -->
+
+<!-- ── HISTORY PANEL ──────────────────────────────────── -->
+<div id="history-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:100"></div>
+<div id="history-panel" class="history-panel-el">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.25rem 1rem;border-bottom:0.5px solid var(--border);flex-shrink:0">
+    <span style="font-family:var(--font-serif);font-size:18px;color:var(--text)">Campaign history</span>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button onclick="clearHistory()" style="font-size:11px;color:var(--text-3);background:none;border:0.5px solid var(--border);border-radius:var(--radius);padding:4px 8px;cursor:pointer;font-family:var(--font-body)">Clear all</button>
+      <button onclick="closeHistory()" style="font-size:18px;color:var(--text-2);background:none;border:none;cursor:pointer;line-height:1;padding:4px">&#x2715;</button>
+    </div>
+  </div>
+  <div id="history-list" style="overflow-y:auto;flex:1;padding:0.75rem"></div>
+</div>
+<style>
+  .history-panel-el { position:fixed;top:0;right:-380px;width:360px;max-width:95vw;height:100vh;background:var(--bg);border-left:0.5px solid var(--border);z-index:101;transition:right .25s ease;overflow:hidden;display:flex;flex-direction:column; }
+  .history-panel-el.open { right: 0; }
+  .history-item { padding:12px; margin-bottom:6px; background:var(--bg-2); border:0.5px solid var(--border); border-radius:var(--radius); cursor:pointer; transition:border-color .15s; }
+  .history-item:hover { border-color:var(--green); }
+  .history-item-header { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:3px; }
+  .history-job { font-size:13px; font-weight:500; color:var(--text); }
+  .history-date { font-size:10px; color:var(--text-3); white-space:nowrap; margin-top:1px; }
+  .history-meta { font-size:11px; color:var(--text-3); margin-bottom:4px; }
+  .history-preview { font-size:11px; color:var(--text-2); line-height:1.4; margin-bottom:5px; font-style:italic; }
+  .history-channels { display:flex; gap:4px; flex-wrap:wrap; }
+  .history-ch-dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+</style>
+
+<!-- Load prompts first (provides window.StokePrompts), then app logic -->
+<script src="js/prompts.js"></script>
+<script src="js/stoke.js"></script>
+<script src="js/voice.js"></script>
+</body>
+</html>

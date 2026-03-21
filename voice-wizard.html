@@ -45,7 +45,7 @@
     <div class="header-divider"></div>
     <nav class="header-nav">
       <a href="dashboard.html" class="nav-pill">&#127968; Home</a>
-      <a href="index.html" class="nav-pill">&#9997; Generate</a>
+      <a href="app.html" class="nav-pill">&#9997; Generate</a>
       <a href="schedule.html" class="nav-pill">&#128197; Posts</a>
       <a href="reel-maker.html" class="nav-pill">&#127916; Reels</a>
       <a href="calendar.html" class="nav-pill">&#128198; Calendar</a>
@@ -171,7 +171,7 @@ function applyProfile(){
   const updated={...existing,business:{...(existing.business||{}),name:bizName||existing.business?.name||'',city:bizCity||existing.business?.city||'',specialty:specialty||existing.business?.specialty||''},hashtags:hashtags.length>0?hashtags:(existing.hashtags||[]),voice:{...(existing.voice||{}),generalDesc:genVoice||existing.voice?.generalDesc||'',personalDesc:perVoice||existing.voice?.personalDesc||'',authorName:authorName||existing.voice?.authorName||''}};
   localStorage.setItem('stoke_settings',JSON.stringify(updated));
   alert('✓ Voice profile saved! Your next campaign will use it automatically.');
-  window.location.href='index.html';
+  window.location.href='app.html';
 }
 
 function resetWizard(){

@@ -8,7 +8,7 @@ BASE = r"C:\Users\andre\stoke"
 
 NAV_ITEMS = [
     ("dashboard.html",  "dashboard",  "Home"),
-    ("index.html",      "index",      "Generate"),
+    ("app.html",        "generator",      "Generate"),
     ("schedule.html",   "schedule",   "Posts"),
     ("reel-maker.html", "reel-maker", "Reels"),
     ("calendar.html",   "calendar",   "Calendar"),
