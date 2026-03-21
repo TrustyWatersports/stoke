@@ -1,322 +1,1143 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Stoke — Turn your work into growth</title>
+<title>Stoke — The Operating System for Outdoor Businesses</title>
+<meta name="description" content="Stoke turns emails into bookings, jobs into invoices, and every completed job into social content. Built for kayak shops, sailing schools, outdoor guides, and adventure businesses.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/stoke.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-/* ── v8.2 additions ── */
-.stream-status {
-  display:none;
-  align-items:center;
-  gap:8px;
-  padding:10px 14px;
-  background:var(--green-light);
-  border:0.5px solid var(--green);
-  border-radius:var(--radius);
-  font-size:12px;
-  color:var(--green);
-  font-weight:500;
-  margin-bottom:1rem;
-  animation: pulse-border 2s infinite;
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --green:       #1a6b4a;
+  --green-dark:  #0d3320;
+  --green-mid:   #0f4a32;
+  --green-light: #e8f5ef;
+  --green-glow:  rgba(26,107,74,0.15);
+  --sand:        #f5f0e8;
+  --sand-2:      #ede7d9;
+  --text:        #1a1a18;
+  --text-2:      #666660;
+  --text-3:      #99998f;
+  --white:       #ffffff;
+  --border:      rgba(0,0,0,0.1);
+  --serif:       'DM Serif Display', Georgia, serif;
+  --sans:        'DM Sans', system-ui, sans-serif;
+  --radius:      10px;
+  --radius-lg:   16px;
 }
-@keyframes pulse-border {
-  0%,100% { border-color: var(--green); }
-  50%      { border-color: transparent; }
+
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--sans);
+  background: var(--white);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
-.photo-label {
-  position:absolute;
-  bottom:0; left:0; right:0;
-  background:rgba(0,0,0,0.55);
-  color:#fff;
-  font-size:9px;
-  font-weight:500;
-  text-align:center;
-  padding:2px 0;
-  border-radius:0 0 var(--radius) var(--radius);
+
+/* ── NOISE TEXTURE ─────────────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 999;
+  opacity: .4;
 }
-.photo-strip-item {
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:2px;
-  cursor:pointer;
+
+/* ── NAV ────────────────────────────────────────────────────── */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  padding: 16px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 0.5px solid var(--border);
+  transition: box-shadow .2s;
 }
-.photo-strip-item.featured .photo-strip-thumb { border:2.5px solid var(--green); }
-.photo-strip-label {
-  font-size:9px;
-  color:var(--text-3);
-  font-weight:500;
+nav.scrolled { box-shadow: 0 2px 20px rgba(0,0,0,0.08); }
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
 }
-.photo-strip-item.featured .photo-strip-label { color:var(--green); }
-.featured-photo-label {
-  font-size:11px;
-  color:var(--text-3);
-  padding:4px 14px 6px;
-  font-style:italic;
+.nav-logo {
+  width: 32px; height: 32px;
+  background: var(--green);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.cal-cell.drag-over {
-  border-color:var(--green) !important;
-  background:var(--green-light) !important;
-  box-shadow:0 0 0 2px rgba(26,107,74,0.2);
+.nav-wordmark {
+  font-family: var(--serif);
+  font-size: 20px;
+  color: var(--text);
+  letter-spacing: -0.5px;
 }
-.day-section[draggable="true"] .day-badge { cursor:grab; }
-.day-section[draggable="true"] .day-badge::before { content:'⠿ '; opacity:0.4; font-size:12px; }
-.content-card.dragging { opacity:0.4; transform:scale(0.98); }
-.day-section.drop-target { outline:2px dashed var(--green); outline-offset:4px; border-radius:var(--radius); background:var(--green-light); }
-.drag-card-handle { color:var(--text-3); cursor:grab; font-size:14px; margin-right:4px; flex-shrink:0; }
-.drag-card-handle:hover { color:var(--green); }
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  list-style: none;
+}
+.nav-links a {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+  text-decoration: none;
+  transition: color .15s;
+}
+.nav-links a:hover { color: var(--green); }
+.nav-cta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.btn-ghost {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: 20px;
+  transition: all .15s;
+}
+.btn-ghost:hover { color: var(--green); background: var(--green-light); }
+.btn-primary {
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+  background: var(--green);
+  text-decoration: none;
+  padding: 9px 20px;
+  border-radius: 20px;
+  transition: background .15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-primary:hover { background: var(--green-mid); }
+@media(max-width:640px){
+  nav { padding: 12px 20px; }
+  .nav-links { display: none; }
+}
+
+/* ── HERO ───────────────────────────────────────────────────── */
+.hero {
+  min-height: 100vh;
+  background: var(--green-dark);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 120px 24px 80px;
+  position: relative;
+  overflow: hidden;
+}
+/* Organic background shapes */
+.hero::before {
+  content: '';
+  position: absolute;
+  width: 800px; height: 800px;
+  background: radial-gradient(circle, rgba(26,107,74,0.4) 0%, transparent 70%);
+  top: -200px; left: -200px;
+  pointer-events: none;
+}
+.hero::after {
+  content: '';
+  position: absolute;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(26,107,74,0.25) 0%, transparent 70%);
+  bottom: -100px; right: -100px;
+  pointer-events: none;
+}
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.08);
+  border: 0.5px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.75);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  padding: 6px 14px;
+  border-radius: 20px;
+  margin-bottom: 28px;
+  position: relative;
+  z-index: 1;
+  animation: fadeUp .6s ease both;
+}
+.hero-badge-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #4ade80;
+  animation: pulse-green 2s ease-in-out infinite;
+}
+@keyframes pulse-green {
+  0%,100% { opacity: 1; }
+  50% { opacity: .4; }
+}
+.hero h1 {
+  font-family: var(--serif);
+  font-size: clamp(44px, 7vw, 88px);
+  color: white;
+  line-height: 1.05;
+  letter-spacing: -1px;
+  max-width: 900px;
+  position: relative;
+  z-index: 1;
+  animation: fadeUp .6s .1s ease both;
+}
+.hero h1 em {
+  font-style: italic;
+  color: rgba(255,255,255,0.55);
+}
+.hero-sub {
+  font-size: clamp(15px, 2vw, 18px);
+  color: rgba(255,255,255,0.6);
+  max-width: 560px;
+  line-height: 1.65;
+  margin: 20px auto 40px;
+  font-weight: 300;
+  position: relative;
+  z-index: 1;
+  animation: fadeUp .6s .2s ease both;
+}
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 1;
+  animation: fadeUp .6s .3s ease both;
+}
+.btn-hero-primary {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--green-dark);
+  background: white;
+  text-decoration: none;
+  padding: 14px 28px;
+  border-radius: 30px;
+  transition: all .2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+}
+.btn-hero-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+.btn-hero-ghost {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.7);
+  text-decoration: none;
+  padding: 14px 24px;
+  border-radius: 30px;
+  border: 0.5px solid rgba(255,255,255,0.2);
+  transition: all .15s;
+}
+.btn-hero-ghost:hover { color: white; border-color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.05); }
+/* Social proof strip */
+.hero-proof {
+  margin-top: 60px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: rgba(255,255,255,0.45);
+  font-size: 12px;
+  position: relative;
+  z-index: 1;
+  animation: fadeUp .6s .4s ease both;
+}
+.hero-avatars {
+  display: flex;
+}
+.hero-avatar {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.2);
+  margin-left: -8px;
+  background: linear-gradient(135deg, #2d9164, #1a6b4a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: white;
+}
+.hero-avatar:first-child { margin-left: 0; }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── SCROLL INDICATOR ───────────────────────────────────────── */
+.scroll-indicator {
+  position: absolute;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: rgba(255,255,255,0.3);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  animation: fadeUp .6s .6s ease both;
+  z-index: 1;
+}
+.scroll-line {
+  width: 1px; height: 36px;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.3), transparent);
+  animation: scroll-pulse 2s ease-in-out infinite;
+}
+@keyframes scroll-pulse {
+  0%,100%{ opacity: .3; } 50%{ opacity: .8; }
+}
+
+/* ── SECTIONS ───────────────────────────────────────────────── */
+section { padding: 100px 24px; }
+.container { max-width: 1100px; margin: 0 auto; }
+.section-tag {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--green);
+  margin-bottom: 12px;
+}
+.section-h2 {
+  font-family: var(--serif);
+  font-size: clamp(32px, 4vw, 52px);
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+  color: var(--text);
+  margin-bottom: 16px;
+}
+.section-h2 em { font-style: italic; color: var(--green); }
+.section-sub {
+  font-size: 16px;
+  color: var(--text-2);
+  line-height: 1.65;
+  max-width: 560px;
+  font-weight: 300;
+}
+
+/* ── PROBLEM STRIP ──────────────────────────────────────────── */
+.problem-strip {
+  background: var(--sand);
+  padding: 60px 24px;
+  border-top: 0.5px solid var(--sand-2);
+  border-bottom: 0.5px solid var(--sand-2);
+}
+.problem-grid {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+}
+@media(max-width:640px){ .problem-grid { grid-template-columns: 1fr; gap: 0; } }
+.problem-item {
+  padding: 32px;
+  border-right: 0.5px solid var(--sand-2);
+}
+.problem-item:last-child { border-right: none; }
+.problem-emoji { font-size: 28px; margin-bottom: 12px; }
+.problem-text {
+  font-size: 15px;
+  color: var(--text-2);
+  line-height: 1.6;
+}
+.problem-text strong { color: var(--text); }
+
+/* ── FEATURES ───────────────────────────────────────────────── */
+.features-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-top: 60px;
+}
+@media(max-width:760px){ .features-grid { grid-template-columns: 1fr; } }
+.feature-card {
+  background: var(--sand);
+  border: 0.5px solid var(--sand-2);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  position: relative;
+  overflow: hidden;
+  transition: transform .2s, box-shadow .2s;
+}
+.feature-card:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0,0,0,0.08); }
+.feature-card.highlight {
+  background: var(--green-dark);
+  border-color: var(--green);
+  grid-column: span 2;
+}
+@media(max-width:760px){ .feature-card.highlight { grid-column: span 1; } }
+.feature-icon {
+  width: 44px; height: 44px;
+  background: var(--green-light);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  margin-bottom: 16px;
+}
+.feature-card.highlight .feature-icon { background: rgba(255,255,255,0.1); }
+.feature-h3 {
+  font-family: var(--serif);
+  font-size: 22px;
+  color: var(--text);
+  margin-bottom: 8px;
+  letter-spacing: -0.3px;
+}
+.feature-card.highlight .feature-h3 { color: white; }
+.feature-p {
+  font-size: 14px;
+  color: var(--text-2);
+  line-height: 1.65;
+  font-weight: 300;
+}
+.feature-card.highlight .feature-p { color: rgba(255,255,255,0.6); }
+.feature-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 16px;
+}
+.feature-tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: white;
+  color: var(--green);
+  border: 0.5px solid var(--green-light);
+}
+.feature-card.highlight .feature-tag {
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.7);
+  border-color: rgba(255,255,255,0.15);
+}
+
+/* ── HOW IT WORKS ───────────────────────────────────────────── */
+.how-section { background: var(--green-dark); }
+.how-section .section-tag { color: rgba(255,255,255,0.5); }
+.how-section .section-h2 { color: white; }
+.how-section .section-h2 em { color: rgba(255,255,255,0.4); }
+.how-section .section-sub { color: rgba(255,255,255,0.5); }
+.steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  margin-top: 60px;
+  border: 0.5px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+@media(max-width:760px){ .steps { grid-template-columns: 1fr 1fr; } }
+@media(max-width:480px){ .steps { grid-template-columns: 1fr; } }
+.step {
+  padding: 36px 28px;
+  border-right: 0.5px solid rgba(255,255,255,0.08);
+  position: relative;
+}
+.step:last-child { border-right: none; }
+.step-num {
+  font-family: var(--serif);
+  font-size: 48px;
+  color: rgba(255,255,255,0.08);
+  line-height: 1;
+  margin-bottom: 16px;
+}
+.step-icon { font-size: 24px; margin-bottom: 12px; }
+.step-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: white;
+  margin-bottom: 8px;
+}
+.step-desc {
+  font-size: 13px;
+  color: rgba(255,255,255,0.45);
+  line-height: 1.6;
+  font-weight: 300;
+}
+
+/* ── VOICE FEATURE ──────────────────────────────────────────── */
+.voice-section {
+  background: var(--sand);
+  padding: 100px 24px;
+}
+.voice-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: center;
+}
+@media(max-width:760px){
+  .voice-inner { grid-template-columns: 1fr; gap: 40px; }
+}
+.voice-demo {
+  background: var(--green-dark);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  position: relative;
+  overflow: hidden;
+}
+.voice-demo::before {
+  content: '';
+  position: absolute;
+  width: 300px; height: 300px;
+  background: radial-gradient(circle, rgba(26,107,74,0.5) 0%, transparent 70%);
+  top: -100px; right: -100px;
+  pointer-events: none;
+}
+.voice-prompt {
+  background: rgba(255,255,255,0.06);
+  border: 0.5px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.voice-mic {
+  width: 28px; height: 28px;
+  background: var(--green);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+  animation: mic-pulse 2s ease-in-out infinite;
+}
+@keyframes mic-pulse {
+  0%,100%{ box-shadow: 0 0 0 0 rgba(26,107,74,0.4); }
+  50%{ box-shadow: 0 0 0 8px rgba(26,107,74,0); }
+}
+.voice-text {
+  font-size: 14px;
+  color: white;
+  font-style: italic;
+  line-height: 1.5;
+}
+.voice-response {
+  background: rgba(255,255,255,0.04);
+  border: 0.5px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.voice-response-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: #4ade80;
+  margin-bottom: 8px;
+}
+.voice-response-text {
+  font-size: 13px;
+  color: rgba(255,255,255,0.7);
+  line-height: 1.6;
+}
+.voice-response-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.voice-btn-confirm {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 14px;
+  background: var(--green);
+  color: white;
+  border-radius: 20px;
+  cursor: pointer;
+}
+.voice-btn-edit {
+  font-size: 11px;
+  padding: 6px 14px;
+  border: 0.5px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.5);
+  border-radius: 20px;
+  cursor: pointer;
+}
+
+/* ── PRICING ────────────────────────────────────────────────── */
+.pricing-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1.5rem;
+  margin-top: 60px;
+  align-items: start;
+}
+@media(max-width:760px){ .pricing-grid { grid-template-columns: 1fr; max-width: 400px; margin-left: auto; margin-right: auto; } }
+.pricing-card {
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 36px 32px;
+  position: relative;
+  background: white;
+  transition: transform .2s, box-shadow .2s;
+}
+.pricing-card:hover { transform: translateY(-4px); box-shadow: 0 16px 48px rgba(0,0,0,0.1); }
+.pricing-card.featured {
+  background: var(--green-dark);
+  border-color: var(--green);
+  transform: scale(1.03);
+}
+.pricing-card.featured:hover { transform: scale(1.03) translateY(-4px); }
+.pricing-badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--green);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  padding: 4px 14px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.pricing-tier {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--text-3);
+  margin-bottom: 12px;
+}
+.pricing-card.featured .pricing-tier { color: rgba(255,255,255,0.4); }
+.pricing-price {
+  font-family: var(--serif);
+  font-size: 48px;
+  color: var(--text);
+  line-height: 1;
+  margin-bottom: 4px;
+  letter-spacing: -1px;
+}
+.pricing-card.featured .pricing-price { color: white; }
+.pricing-price sup { font-size: 22px; vertical-align: top; margin-top: 8px; }
+.pricing-period {
+  font-size: 13px;
+  color: var(--text-3);
+  margin-bottom: 28px;
+}
+.pricing-card.featured .pricing-period { color: rgba(255,255,255,0.4); }
+.pricing-features {
+  list-style: none;
+  margin-bottom: 32px;
+}
+.pricing-features li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-2);
+  padding: 7px 0;
+  border-bottom: 0.5px solid var(--border);
+  line-height: 1.4;
+}
+.pricing-features li:last-child { border-bottom: none; }
+.pricing-card.featured .pricing-features li { color: rgba(255,255,255,0.65); border-bottom-color: rgba(255,255,255,0.08); }
+.pricing-check { color: var(--green); font-size: 12px; flex-shrink: 0; margin-top: 1px; }
+.pricing-card.featured .pricing-check { color: #4ade80; }
+.pricing-cta {
+  width: 100%;
+  padding: 13px;
+  background: var(--green);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  display: block;
+  transition: background .15s;
+}
+.pricing-cta:hover { background: var(--green-mid); }
+.pricing-cta.ghost {
+  background: transparent;
+  border: 0.5px solid var(--border);
+  color: var(--text-2);
+}
+.pricing-cta.ghost:hover { border-color: var(--green); color: var(--green); background: var(--green-light); }
+.pricing-card.featured .pricing-cta {
+  background: white;
+  color: var(--green-dark);
+}
+.pricing-card.featured .pricing-cta:hover { background: rgba(255,255,255,0.9); }
+
+/* ── TESTIMONIAL ────────────────────────────────────────────── */
+.testimonial-section {
+  background: var(--sand);
+  padding: 80px 24px;
+  text-align: center;
+}
+.testimonial-quote {
+  font-family: var(--serif);
+  font-size: clamp(22px, 3vw, 36px);
+  color: var(--text);
+  max-width: 800px;
+  margin: 0 auto 24px;
+  line-height: 1.35;
+  letter-spacing: -0.3px;
+}
+.testimonial-quote em { font-style: italic; color: var(--green); }
+.testimonial-author {
+  font-size: 13px;
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+/* ── CTA BOTTOM ─────────────────────────────────────────────── */
+.cta-section {
+  background: var(--green-dark);
+  text-align: center;
+  padding: 100px 24px;
+  position: relative;
+  overflow: hidden;
+}
+.cta-section::before {
+  content: '';
+  position: absolute;
+  width: 700px; height: 700px;
+  background: radial-gradient(circle, rgba(26,107,74,0.4), transparent 70%);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.cta-section h2 {
+  font-family: var(--serif);
+  font-size: clamp(36px, 5vw, 64px);
+  color: white;
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+  max-width: 700px;
+  margin: 0 auto 20px;
+  position: relative;
+  z-index: 1;
+}
+.cta-section h2 em { font-style: italic; color: rgba(255,255,255,0.45); }
+.cta-section p {
+  font-size: 16px;
+  color: rgba(255,255,255,0.5);
+  max-width: 440px;
+  margin: 0 auto 40px;
+  line-height: 1.6;
+  position: relative;
+  z-index: 1;
+  font-weight: 300;
+}
+.cta-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── FOOTER ─────────────────────────────────────────────────── */
+footer {
+  background: #0a1f13;
+  padding: 48px 40px 32px;
+  color: rgba(255,255,255,0.35);
+}
+.footer-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--serif);
+  font-size: 18px;
+  color: rgba(255,255,255,0.6);
+  text-decoration: none;
+}
+.footer-links {
+  display: flex;
+  gap: 24px;
+  list-style: none;
+}
+.footer-links a {
+  font-size: 12px;
+  color: rgba(255,255,255,0.3);
+  text-decoration: none;
+  transition: color .15s;
+}
+.footer-links a:hover { color: rgba(255,255,255,0.7); }
+.footer-copy { font-size: 12px; }
 </style>
 </head>
 <body>
-<div class="app">
 
-  <!-- ── HEADER ─────────────────────────────────────────── -->
-  <div class="header">
-    <a href="dashboard.html" class="header-home">
-      <div class="logo"><svg viewBox="0 0 20 20" fill="none" width="20" height="20"><path d="M10 2C10 2 4 8 4 12a6 6 0 0012 0c0-4-6-10-6-10z" fill="white" opacity=".95"/><path d="M10 8c0 0-2 3-2 5a2 2 0 004 0c0-2-2-5-2-5z" fill="white" opacity=".45"/></svg></div>
-      <span class="wordmark">Stoke</span>
+<!-- NAV -->
+<nav id="nav">
+  <a href="#" class="nav-brand">
+    <div class="nav-logo">
+      <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
+        <path d="M10 2C10 2 4 8 4 12a6 6 0 0012 0c0-4-6-10-6-10z" fill="white" opacity=".95"/>
+        <path d="M10 8c0 0-2 3-2 5a2 2 0 004 0c0-2-2-5-2-5z" fill="white" opacity=".45"/>
+      </svg>
+    </div>
+    <span class="nav-wordmark">Stoke</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#how-it-works">How it works</a></li>
+    <li><a href="#pricing">Pricing</a></li>
+  </ul>
+  <div class="nav-cta">
+    <a href="login.html" class="btn-ghost">Sign in</a>
+    <a href="login.html" class="btn-primary">Start free trial →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">
+    <div class="hero-badge-dot"></div>
+    Built for outdoor businesses
+  </div>
+  <h1>Run your shop.<br><em>Not your inbox.</em></h1>
+  <p class="hero-sub">Stoke turns customer emails into calendar bookings, completed jobs into invoices, and every great day on the water into social media content — automatically.</p>
+  <div class="hero-actions">
+    <a href="login.html" class="btn-hero-primary">
+      Start your free trial
+      <span>→</span>
     </a>
-    <div class="header-divider"></div>
-    <nav class="header-nav">
-      <a href="dashboard.html" class="nav-pill">&#127968; Home</a>
-      <a href="app.html" class="nav-pill active">&#9997; Generate</a>
-      <a href="schedule.html" class="nav-pill">&#128197; Posts</a>
-      <a href="reel-maker.html" class="nav-pill">&#127916; Reels</a>
-      <a href="calendar.html" class="nav-pill">&#128198; Calendar</a>
-      <a href="invoices.html" class="nav-pill">&#129534; Invoices</a>
-      <div style="width:1px;height:16px;background:var(--border-2);margin:0 2px;flex-shrink:0"></div>
-      <a href="settings.html" class="nav-pill-icon" title="Settings">&#9881;</a>
-      <a href="voice-wizard.html" class="nav-pill-icon" title="Voice Profile">&#10024;</a>
-      <span id="auth-indicator" class="auth-badge" style="display:none"></span>
-    </nav>
+    <a href="#how-it-works" class="btn-hero-ghost">See how it works</a>
   </div>
-
-  <!-- ── FORM ───────────────────────────────────────────── -->
-  <div id="form-section">
-
-    <!-- PHOTOS -->
-    <div class="field-group">
-      <span class="section-label">Photos</span>
-      <label class="field-label" for="photo-input">Add job photos</label>
-      <span class="field-hint">AI analyzes your images and weaves what it sees into every post. Upload up to 6.</span>
-      <div class="photo-zone" id="photo-zone">
-        <input type="file" id="photo-input" accept="image/jpeg,image/jpg,image/png,image/heic,image/heif,image/*"
-               multiple onchange="handlePhotoSelect(event)" aria-label="Upload job photos">
-        <svg style="width:40px;height:40px;color:var(--text-3);margin:0 auto 10px;display:block" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-          <rect x="3" y="10" width="34" height="24" rx="4" stroke="currentColor" stroke-width="1.5"/>
-          <circle cx="20" cy="22" r="6" stroke="currentColor" stroke-width="1.5"/>
-          <path d="M14 10l2.5-5h7l2.5 5" stroke="currentColor" stroke-width="1.5"/>
-        </svg>
-        <p style="font-size:14px;font-weight:500;color:var(--text-2)">Click to upload or drag photos here</p>
-        <p style="font-size:12px;color:var(--text-3);margin-top:4px">JPG, PNG, HEIC — up to 6 photos</p>
-      </div>
-      <div class="photo-previews" id="photo-previews" role="list" aria-label="Uploaded photos"></div>
-      <div id="photo-count"></div>
+  <div class="hero-proof">
+    <div class="hero-avatars">
+      <div class="hero-avatar">A</div>
+      <div class="hero-avatar">H</div>
+      <div class="hero-avatar">J</div>
+      <div class="hero-avatar">M</div>
     </div>
+    Built by a kayak shop owner, for outdoor businesses
+  </div>
+  <div class="scroll-indicator">
+    <div class="scroll-line"></div>
+    Scroll
+  </div>
+</section>
 
-    <div class="divider"></div>
-
-    <!-- JOB TYPE -->
-    <div class="field-group">
-      <span class="section-label">Job details</span>
-      <label class="field-label">
-        Job type
-        <span class="field-label-sub">(select all that apply)</span>
-        <span class="selection-count" id="job-type-count"></span>
-      </label>
-      <!-- Populated dynamically from settings by stoke.js applySettingsToForm() -->
-      <div class="toggle-grid toggle-grid-3" id="job-type-grid" role="group" aria-label="Job type"></div>
+<!-- PROBLEM STRIP -->
+<div class="problem-strip">
+  <div class="problem-grid">
+    <div class="problem-item">
+      <div class="problem-emoji">📧</div>
+      <p class="problem-text"><strong>Leads fall through the cracks.</strong> A customer emails about a kayak rental, you're out on the water, and by the time you respond they've booked someone else.</p>
     </div>
-
-    <div class="field-group">
-      <label class="field-label" for="customer-moment">Customer moment</label>
-      <span class="field-hint">Who was the customer, what brought them in, anything memorable</span>
-      <textarea id="customer-moment" rows="3"
-        placeholder="e.g. Brett drove 2.5 hours, tried three boats back to back..."></textarea>
+    <div class="problem-item">
+      <div class="problem-emoji">📋</div>
+      <p class="problem-text"><strong>Office work eats your evenings.</strong> Invoicing, social posts, quote follow-ups — you didn't start an outdoor business to spend nights at a desk.</p>
     </div>
-
-    <div class="field-group">
-      <label class="field-label" for="products-used">Key products or components</label>
-      <input type="text" id="products-used"
-        placeholder="e.g. Native Slayer LTE, Topaz Argo, YakAttack GearTrac...">
-    </div>
-
-    <div class="field-group">
-      <label class="field-label" for="problem-solved">What problem did this solve?</label>
-      <input type="text" id="problem-solved"
-        placeholder="e.g. Try before you buy, tournament-ready setup...">
-    </div>
-
-    <div class="field-group">
-      <label class="field-label" for="extra-details">Anything else worth capturing?</label>
-      <textarea id="extra-details" rows="2"
-        placeholder="Weather, results, reactions, quotes, before/after..."></textarea>
-    </div>
-
-    <div class="divider"></div>
-
-    <!-- OUTPUT CHANNELS -->
-    <div class="field-group">
-      <label class="field-label">
-        Output channels
-        <span class="field-label-sub">(select all you want)</span>
-        <span class="selection-count" id="channel-count">4 selected</span>
-      </label>
-      <span class="field-hint">Choose which platforms to generate content for</span>
-      <div class="toggle-grid toggle-grid-4" role="group" aria-label="Output channels">
-        <button class="toggle-btn selected" data-channel="INSTAGRAM" onclick="toggleChannel(this)">
-          Instagram<small>Caption + hashtags</small>
-        </button>
-        <button class="toggle-btn selected" data-channel="FACEBOOK" onclick="toggleChannel(this)">
-          Facebook<small>Long-form post</small>
-        </button>
-        <button class="toggle-btn" data-channel="TIKTOK" onclick="toggleChannel(this)">
-          TikTok / Reels<small>Video script</small>
-        </button>
-        <button class="toggle-btn selected" data-channel="GOOGLE" onclick="toggleChannel(this)">
-          Google Business<small>Business update</small>
-        </button>
-        <button class="toggle-btn selected" data-channel="EMAIL" onclick="toggleChannel(this)">
-          Customer Email<small>Follow-up email</small>
-        </button>
-        <button class="toggle-btn" data-channel="YOUTUBE" onclick="toggleChannel(this)">
-          YouTube Shorts<small>Video script</small>
-        </button>
-      </div>
-    </div>
-
-    <!-- WRITING STYLE -->
-    <div class="field-group">
-      <label class="field-label">Writing style</label>
-      <div class="toggle-grid toggle-grid-2" role="group" aria-label="Writing style">
-        <button id="tone-general" class="toggle-btn selected" onclick="selectTone('general')"
-                style="text-align:left;padding:10px 12px">
-          <span style="font-weight:500;display:block;margin-bottom:2px">General</span>
-          <span style="font-size:11px;color:var(--text-3)">Clear, specific, results-driven. Grows new followers.</span>
-        </button>
-        <button id="tone-personal" class="toggle-btn" onclick="selectTone('personal')"
-                style="text-align:left;padding:10px 12px">
-          <span style="font-weight:500;display:block;margin-bottom:2px">Personal</span>
-          <span style="font-size:11px;color:var(--text-3)">Story-driven, Heather's full voice. Deepens loyalty.</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- CAMPAIGN LENGTH -->
-    <div class="field-group">
-      <label class="field-label">Campaign length</label>
-      <span class="field-hint">Posts spread across this many days from the start date</span>
-      <div class="toggle-grid toggle-grid-4" role="group" aria-label="Campaign length">
-        <button class="toggle-btn" data-days="1"  onclick="selectCampaignLength(this)">
-          1 Day<small>Immediate</small>
-        </button>
-        <button class="toggle-btn selected" data-days="3" onclick="selectCampaignLength(this)">
-          3 Days<small>Short burst</small>
-        </button>
-        <button class="toggle-btn" data-days="7"  onclick="selectCampaignLength(this)">
-          1 Week<small>Steady drip</small>
-        </button>
-        <button class="toggle-btn" data-days="14" onclick="selectCampaignLength(this)">
-          2 Weeks<small>Full campaign</small>
-        </button>
-      </div>
-    </div>
-
-    <div class="field-group">
-      <label class="field-label" for="start-date">Start date</label>
-      <input type="text" id="start-date" value="Today"
-             style="max-width:220px" placeholder="e.g. Today, Monday, March 24...">
-    </div>
-
-    <button class="generate-btn" id="generate-btn"
-            onclick="event.preventDefault(); generateContent()">
-      <span id="btn-label">Generate content campaign</span>
-      <span class="photo-pill" id="photo-indicator" style="display:none" aria-live="polite"></span>
-    </button>
-
-    <div class="error-msg" id="error-msg" role="alert" aria-live="assertive"></div>
-  </div><!-- /form-section -->
-
-  <!-- ── LOADING ─────────────────────────────────────────── -->
-  <div class="loading-state" id="loading-state" role="status" aria-live="polite">
-    <div class="loading-photo-strip" id="loading-photo-strip"></div>
-    <div class="loading-dots" aria-hidden="true">
-      <div class="loading-dot"></div>
-      <div class="loading-dot"></div>
-      <div class="loading-dot"></div>
-    </div>
-    <p class="loading-text" id="loading-text">Building your campaign...</p>
-    <div class="skeleton-grid">
-      <div class="skeleton-card"></div>
-      <div class="skeleton-card" style="height:60px;opacity:.7"></div>
-      <div class="skeleton-card" style="height:60px;opacity:.4"></div>
+    <div class="problem-item">
+      <div class="problem-emoji">📱</div>
+      <p class="problem-text"><strong>Marketing gets skipped.</strong> You know great content drives bookings, but creating it takes time you don't have after a full day on the water.</p>
     </div>
   </div>
-
-  <!-- ── RESULTS ─────────────────────────────────────────── -->
-  <div class="results-section" id="results-section">
-
-    <div class="results-header">
-      <span class="results-title">Your content campaign</span>
-      <button class="reset-btn" onclick="resetForm()">New job</button>
-    </div>
-    <p class="results-subtitle" id="results-subtitle"></p>
-
-    <!-- Calendar -->
-    <div class="calendar-wrap" id="calendar-wrap">
-      <div class="cal-header" id="cal-header" aria-hidden="true"></div>
-      <div class="calendar-grid" id="calendar-grid" role="grid" aria-label="Campaign calendar"></div>
-      <p class="cal-hint">Click a highlighted day to view its posts</p>
-    </div>
-
-    <!-- Streaming status -->
-    <div class="stream-status" id="stream-status">✦ Writing your campaign...</div>
-
-    <!-- Post list -->
-    <div class="campaign-nav">
-      <span class="campaign-count" id="campaign-count" aria-live="polite"></span>
-      <button class="bulk-approve-btn" onclick="approveAll()">Approve all</button>
-    </div>
-    <div id="posts-list"></div>
-
-  </div><!-- /results-section -->
-
-</div><!-- /app -->
-
-<!-- ── HISTORY PANEL ──────────────────────────────────── -->
-<div id="history-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:100"></div>
-<div id="history-panel" class="history-panel-el">
-  <div style="display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.25rem 1rem;border-bottom:0.5px solid var(--border);flex-shrink:0">
-    <span style="font-family:var(--font-serif);font-size:18px;color:var(--text)">Campaign history</span>
-    <div style="display:flex;align-items:center;gap:8px">
-      <button onclick="clearHistory()" style="font-size:11px;color:var(--text-3);background:none;border:0.5px solid var(--border);border-radius:var(--radius);padding:4px 8px;cursor:pointer;font-family:var(--font-body)">Clear all</button>
-      <button onclick="closeHistory()" style="font-size:18px;color:var(--text-2);background:none;border:none;cursor:pointer;line-height:1;padding:4px">&#x2715;</button>
-    </div>
-  </div>
-  <div id="history-list" style="overflow-y:auto;flex:1;padding:0.75rem"></div>
 </div>
-<style>
-  .history-panel-el { position:fixed;top:0;right:-380px;width:360px;max-width:95vw;height:100vh;background:var(--bg);border-left:0.5px solid var(--border);z-index:101;transition:right .25s ease;overflow:hidden;display:flex;flex-direction:column; }
-  .history-panel-el.open { right: 0; }
-  .history-item { padding:12px; margin-bottom:6px; background:var(--bg-2); border:0.5px solid var(--border); border-radius:var(--radius); cursor:pointer; transition:border-color .15s; }
-  .history-item:hover { border-color:var(--green); }
-  .history-item-header { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:3px; }
-  .history-job { font-size:13px; font-weight:500; color:var(--text); }
-  .history-date { font-size:10px; color:var(--text-3); white-space:nowrap; margin-top:1px; }
-  .history-meta { font-size:11px; color:var(--text-3); margin-bottom:4px; }
-  .history-preview { font-size:11px; color:var(--text-2); line-height:1.4; margin-bottom:5px; font-style:italic; }
-  .history-channels { display:flex; gap:4px; flex-wrap:wrap; }
-  .history-ch-dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
-</style>
 
-<!-- Load prompts first (provides window.StokePrompts), then app logic -->
-<script src="js/prompts.js"></script>
-<script src="js/stoke.js"></script>
-<script src="js/voice.js"></script>
+<!-- FEATURES -->
+<section id="features">
+  <div class="container">
+    <div class="section-tag">Everything in one place</div>
+    <h2 class="section-h2">Your whole front office,<br><em>finally automated.</em></h2>
+    <p class="section-sub">Stoke connects your calendar, social content, invoices, and customer communications into a single platform — with AI that actually understands your business.</p>
+
+    <div class="features-grid">
+      <div class="feature-card highlight">
+        <div class="feature-icon">🎤</div>
+        <h3 class="feature-h3">Voice-powered operations</h3>
+        <p class="feature-p">Say "Hey Stoke, invoice Mike for the rigging job" and it's done. Stoke knows Mike's email, the job details, and the right amount — because it was there when you booked him. Voice commands work from any page, any device.</p>
+        <div class="feature-tags">
+          <span class="feature-tag">Invoice customers</span>
+          <span class="feature-tag">Book appointments</span>
+          <span class="feature-tag">Query your schedule</span>
+          <span class="feature-tag">Create social posts</span>
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">✦</div>
+        <h3 class="feature-h3">AI content generator</h3>
+        <p class="feature-p">Tell Stoke what you did today. It writes a week of social media posts — Instagram, Facebook, TikTok — in your voice, with your hashtags, scheduled and ready to post.</p>
+        <div class="feature-tags">
+          <span class="feature-tag">Instagram</span>
+          <span class="feature-tag">TikTok</span>
+          <span class="feature-tag">Facebook</span>
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🎬</div>
+        <h3 class="feature-h3">Reel Maker</h3>
+        <p class="feature-p">Drop in photos from today's trip. Pick a vibe. Hit Create. A fully produced 9:16 vertical reel — with music, Ken Burns motion, and your caption — renders in under a minute. Share directly to TikTok or Instagram.</p>
+        <div class="feature-tags">
+          <span class="feature-tag">8 royalty-free tracks</span>
+          <span class="feature-tag">Ken Burns</span>
+          <span class="feature-tag">Direct share</span>
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">📆</div>
+        <h3 class="feature-h3">Smart calendar</h3>
+        <p class="feature-p">Paste a customer email into Stoke and watch it become a calendar event — with their name, phone, service type, and preferred time extracted automatically. Month, Week, Day, and Agenda views.</p>
+        <div class="feature-tags">
+          <span class="feature-tag">AI lead parsing</span>
+          <span class="feature-tag">Drag to reschedule</span>
+          <span class="feature-tag">5 event types</span>
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🧾</div>
+        <h3 class="feature-h3">Quotes & invoicing</h3>
+        <p class="feature-p">AI generates line items from your job notes. One tap sends it to QuickBooks or creates a Stripe payment link. You never touch the money — Stoke hands off cleanly and gets out of the way.</p>
+        <div class="feature-tags">
+          <span class="feature-tag">QuickBooks sync</span>
+          <span class="feature-tag">Stripe payment links</span>
+          <span class="feature-tag">PDF export</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how-section" id="how-it-works">
+  <div class="container">
+    <div class="section-tag">Simple by design</div>
+    <h2 class="section-h2">From inquiry to invoice<br><em>in four steps.</em></h2>
+    <p class="section-sub">Stoke connects the dots so you don't have to. Each step feeds the next automatically.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-icon">📧</div>
+        <div class="step-title">Lead arrives</div>
+        <p class="step-desc">Customer emails or fills out your web form. Stoke reads it and extracts the key details automatically.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-icon">📆</div>
+        <div class="step-title">Calendar event created</div>
+        <p class="step-desc">AI suggests a time slot, pre-fills the booking, and sends a confirmation to the customer. You just confirm.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-icon">🧾</div>
+        <div class="step-title">Job complete → invoice</div>
+        <p class="step-desc">Say "Invoice Sarah for the kayak rental." Stoke builds the invoice from the calendar event and sends it via QuickBooks or Stripe.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">04</div>
+        <div class="step-icon">✦</div>
+        <div class="step-title">Post about it</div>
+        <p class="step-desc">Stoke turns your completed job into a week of social content. Photos become reels. Great days become great marketing.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- VOICE FEATURE HIGHLIGHT -->
+<section class="voice-section">
+  <div class="voice-inner">
+    <div>
+      <div class="section-tag">Hey Stoke</div>
+      <h2 class="section-h2">Your business,<br><em>voice-controlled.</em></h2>
+      <p class="section-sub" style="margin-bottom:24px">The whole platform is voice-powered. Say what you need, Stoke shows you what it's about to do, you confirm. That's the whole interaction.</p>
+      <p class="section-sub" style="font-size:14px">Works hands-free on any phone. Perfect for after a long day on the water when typing feels like too much to ask.</p>
+    </div>
+    <div class="voice-demo">
+      <div class="voice-prompt">
+        <div class="voice-mic">🎤</div>
+        <div class="voice-text">"Hey Stoke — invoice Mike for the rigging build. He already paid the deposit."</div>
+      </div>
+      <div class="voice-response">
+        <div class="voice-response-label">✦ Stoke understood</div>
+        <div class="voice-response-text">
+          Invoice for <strong style="color:white">Mike Thompson</strong> — Custom Rigging Build.<br>
+          <strong style="color:white">$489.00</strong> less $150 deposit = <strong style="color:white">$339.00 due</strong>.<br>
+          Sending to mike.thompson@gmail.com via Stripe.
+        </div>
+        <div class="voice-response-actions">
+          <div class="voice-btn-confirm">✓ Confirm</div>
+          <div class="voice-btn-edit">Edit first</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section id="pricing">
+  <div class="container">
+    <div class="section-tag">Simple pricing</div>
+    <h2 class="section-h2">One price.<br><em>Everything included.</em></h2>
+    <p class="section-sub">No feature tiers, no per-seat fees, no surprise charges. Just Stoke, working for your business every day.</p>
+
+    <div class="pricing-grid">
+      <div class="pricing-card">
+        <div class="pricing-tier">Starter</div>
+        <div class="pricing-price"><sup>$</sup>79</div>
+        <div class="pricing-period">per month</div>
+        <ul class="pricing-features">
+          <li><span class="pricing-check">✓</span> AI content generator</li>
+          <li><span class="pricing-check">✓</span> Reel Maker (photos + video)</li>
+          <li><span class="pricing-check">✓</span> Calendar with AI lead parsing</li>
+          <li><span class="pricing-check">✓</span> Up to 20 invoices/month</li>
+          <li><span class="pricing-check">✓</span> Voice commands</li>
+          <li><span class="pricing-check">✓</span> 1 user</li>
+        </ul>
+        <a href="login.html" class="pricing-cta ghost">Start free trial</a>
+      </div>
+
+      <div class="pricing-card featured">
+        <div class="pricing-badge">Most popular</div>
+        <div class="pricing-tier">Growth</div>
+        <div class="pricing-price"><sup>$</sup>149</div>
+        <div class="pricing-period">per month</div>
+        <ul class="pricing-features">
+          <li><span class="pricing-check">✓</span> Everything in Starter</li>
+          <li><span class="pricing-check">✓</span> Unlimited invoices</li>
+          <li><span class="pricing-check">✓</span> QuickBooks + Stripe sync</li>
+          <li><span class="pricing-check">✓</span> Lead capture embed for your website</li>
+          <li><span class="pricing-check">✓</span> Up to 3 staff members</li>
+          <li><span class="pricing-check">✓</span> Priority support</li>
+        </ul>
+        <a href="login.html" class="pricing-cta">Start free trial →</a>
+      </div>
+
+      <div class="pricing-card">
+        <div class="pricing-tier">Scale</div>
+        <div class="pricing-price"><sup>$</sup>299</div>
+        <div class="pricing-period">per month</div>
+        <ul class="pricing-features">
+          <li><span class="pricing-check">✓</span> Everything in Growth</li>
+          <li><span class="pricing-check">✓</span> Multiple locations</li>
+          <li><span class="pricing-check">✓</span> Unlimited staff</li>
+          <li><span class="pricing-check">✓</span> Custom brand voice training</li>
+          <li><span class="pricing-check">✓</span> API access</li>
+          <li><span class="pricing-check">✓</span> Dedicated onboarding</li>
+        </ul>
+        <a href="login.html" class="pricing-cta ghost">Contact us</a>
+      </div>
+    </div>
+
+    <p style="text-align:center;margin-top:32px;font-size:13px;color:var(--text-3)">
+      All plans include a 14-day free trial. No credit card required.
+    </p>
+  </div>
+</section>
+
+<!-- TESTIMONIAL -->
+<div class="testimonial-section">
+  <blockquote class="testimonial-quote">
+    "I used to spend Sunday evenings writing captions and chasing invoices. Now Stoke does it while I'm still on the water. <em>That's the whole pitch.</em>"
+  </blockquote>
+  <div class="testimonial-author">Andrew F. — Trusty Sail &amp; Paddle, Morehead City NC</div>
+</div>
+
+<!-- CTA -->
+<section class="cta-section">
+  <h2>Stop running your business<br>from <em>memory and sticky notes.</em></h2>
+  <p>Join outdoor businesses already using Stoke to book more, invoice faster, and market without the effort.</p>
+  <div class="cta-actions">
+    <a href="login.html" class="btn-hero-primary">Start your free trial →</a>
+    <a href="#pricing" class="btn-hero-ghost">See pricing</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <a href="#" class="footer-brand">
+      <div class="nav-logo" style="width:26px;height:26px">
+        <svg viewBox="0 0 20 20" fill="none" width="14" height="14">
+          <path d="M10 2C10 2 4 8 4 12a6 6 0 0012 0c0-4-6-10-6-10z" fill="white" opacity=".95"/>
+        </svg>
+      </div>
+      Stoke
+    </a>
+    <ul class="footer-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#pricing">Pricing</a></li>
+      <li><a href="login.html">Sign in</a></li>
+      <li><a href="dashboard.html">Dashboard</a></li>
+    </ul>
+    <div class="footer-copy">&copy; 2026 Stoke. Built for outdoor businesses.</div>
+  </div>
+</footer>
+
+<script>
+// Sticky nav shadow on scroll
+const nav = document.getElementById('nav');
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 20);
+});
+
+// Animate sections on scroll
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.style.opacity = '1';
+      e.target.style.transform = 'translateY(0)';
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.feature-card, .step, .pricing-card').forEach(el => {
+  el.style.opacity = '0';
+  el.style.transform = 'translateY(20px)';
+  el.style.transition = 'opacity .5s ease, transform .5s ease';
+  observer.observe(el);
+});
+</script>
 </body>
 </html>
