@@ -140,6 +140,43 @@ async function handleParseLead(request,env){
   return json({ok:true,message:'Use client-side AI parsing for now'});
 }
 
+// ── DEMO LOGIN ───────────────────────────────────────────────────────────
+async function handleDemoLogin(request,env){
+  const url=new URL(request.url);
+  const secret=url.searchParams.get('secret')||'';
+  // Require a secret so randoms can't use it
+  const demoSecret=env.DEMO_SECRET||'trustysail2026';
+  if(secret!==demoSecret)return err('Invalid demo secret',401);
+  const email=url.searchParams.get('email')||'trustywatersports@gmail.com';
+  // Look up user
+  let user,business;
+  try{
+    user=await env.DB.prepare('SELECT * FROM users WHERE email=? LIMIT 1').bind(email).first();
+    if(!user)return err('User not found',404);
+    business=await env.DB.prepare('SELECT * FROM businesses WHERE id=? LIMIT 1').bind(user.business_id).first();
+  }catch(e){
+    // D1 not migrated yet — use seed defaults
+    user={id:'usr_andrew',business_id:'biz_trustysail',email:'trustywatersports@gmail.com',name:'Andrew Fournel',role:'owner'};
+    business={id:'biz_trustysail',name:'Trusty Sail & Paddle',city:'Morehead City, NC',website:'trustysailandpaddle.com'};
+  }
+  // Create session token
+  const sessionToken=token(32);
+  const expires=now()+(7*24*3600); // 7 days
+  try{
+    await env.DB.prepare('INSERT INTO sessions(id,user_id,business_id,expires_at,created_at)VALUES(?,?,?,?,?)').bind(sessionToken,user.id,user.business_id,expires,now()).run();
+  }catch(e){
+    // Sessions table may not exist yet, still set cookie
+    console.warn('[Demo] Could not save session:',e.message);
+  }
+  // Set cookie and redirect to dashboard
+  const redirectUrl=url.searchParams.get('redirect')||'/dashboard.html';
+  return new Response(null,{status:302,headers:{
+    'Location':redirectUrl,
+    'Set-Cookie':`stoke_session=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7*24*3600}`,
+    'Cache-Control':'no-store',
+  }});
+}
+
 // ── INVOICES ─────────────────────────────────────────────────────────────
 async function handleListInvoices(request,env){
   const s=await requireAuth(request,env);
@@ -311,6 +348,7 @@ export default {
     if(method==='OPTIONS')return new Response(null,{status:204,headers:CORS});
     try{
       if(path==='/auth/login'&&method==='POST')return handleLogin(request,env);
+      if(path==='/auth/demo'&&method==='GET')return handleDemoLogin(request,env);
       if(path==='/auth/verify'&&method==='GET')return handleVerify(request,env);
       if(path==='/auth/logout'&&method==='POST')return handleLogout(request,env);
       if(path==='/auth/me'&&method==='GET')return handleMe(request,env);
