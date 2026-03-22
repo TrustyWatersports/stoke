@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stoke — Set up your account</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/stoke.css">
+<style>
+.onboarding-wrap { max-width: 680px; margin: 0 auto; }
+.ob-step { display: none; }
+.ob-step.active { display: block; }
+
+/* Vertical picker */
+.vertical-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 24px 0; }
+@media(max-width:500px){ .vertical-grid { grid-template-columns: 1fr; } }
+.vertical-card {
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  cursor: pointer;
+  transition: all .15s;
+  background: var(--bg);
+}
+.vertical-card:hover { border-color: var(--green); background: var(--green-light); }
+.vertical-card.selected { border-color: var(--green); background: var(--green-light); }
+.vertical-card.selected .vc-icon { background: var(--green); }
+.vc-icon { width: 40px; height: 40px; border-radius: 10px; background: var(--bg-2); display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 10px; transition: background .15s; }
+.vc-name { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+.vc-desc { font-size: 11px; color: var(--text-3); line-height: 1.4; }
+
+/* Chat interface */
+.chat-wrap { background: var(--bg-2); border-radius: var(--radius-lg); border: 0.5px solid var(--border); overflow: hidden; margin: 20px 0; }
+.chat-messages { padding: 20px; min-height: 300px; max-height: 450px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.chat-msg { max-width: 85%; }
+.chat-msg.stoke { align-self: flex-start; }
+.chat-msg.user { align-self: flex-end; }
+.chat-bubble {
+  padding: 12px 16px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.stoke .chat-bubble { background: white; border: 0.5px solid var(--border); color: var(--text); border-radius: 14px 14px 14px 4px; }
+.user .chat-bubble { background: var(--green); color: white; border-radius: 14px 14px 4px 14px; }
+.chat-sender { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); margin-bottom: 4px; padding: 0 4px; }
+.chat-input-row { display: flex; gap: 8px; padding: 12px; border-top: 0.5px solid var(--border); background: white; }
+.chat-input {
+  flex: 1; padding: 10px 14px; font-size: 14px; font-family: var(--font-body);
+  border: 0.5px solid var(--border-2); border-radius: var(--radius);
+  background: var(--bg); color: var(--text); outline: none; resize: none;
+  min-height: 44px; max-height: 120px;
+}
+.chat-input:focus { border-color: var(--green); }
+.chat-send-btn {
+  width: 44px; height: 44px; border: none; border-radius: var(--radius);
+  background: var(--green); color: white; cursor: pointer; font-size: 18px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  transition: background .15s;
+}
+.chat-send-btn:hover { background: var(--green-mid); }
+.chat-send-btn:disabled { opacity: .5; cursor: default; }
+
+/* Typing indicator */
+.typing-dots { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
+.typing-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); animation: dot-bounce .8s ease-in-out infinite; }
+.typing-dot:nth-child(2) { animation-delay: .15s; }
+.typing-dot:nth-child(3) { animation-delay: .3s; }
+@keyframes dot-bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+
+/* Profile review */
+.profile-review { background: var(--bg-2); border-radius: var(--radius-lg); padding: 20px; margin: 16px 0; border: 0.5px solid var(--border); }
+.pr-row { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 0.5px solid var(--border); }
+.pr-row:last-child { border-bottom: none; }
+.pr-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); min-width: 100px; padding-top: 2px; }
+.pr-value { font-size: 13px; color: var(--text); flex: 1; line-height: 1.5; }
+.pr-edit { font-size: 11px; color: var(--green); cursor: pointer; text-decoration: underline; }
+
+/* Automation toggle */
+.automation-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 16px 0; }
+@media(max-width:500px){ .automation-cards { grid-template-columns: 1fr; } }
+.auto-card {
+  border: 1.5px solid var(--border); border-radius: var(--radius); padding: 16px 14px;
+  cursor: pointer; transition: all .15s; background: var(--bg);
+}
+.auto-card:hover { border-color: var(--green); }
+.auto-card.selected { border-color: var(--green); background: var(--green-light); }
+.auto-icon { font-size: 22px; margin-bottom: 8px; }
+.auto-name { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+.auto-desc { font-size: 11px; color: var(--text-3); line-height: 1.4; }
+
+/* Progress bar */
+.ob-progress { display: flex; gap: 6px; margin-bottom: 28px; }
+.ob-progress-step { flex: 1; height: 3px; border-radius: 2px; background: var(--border-2); transition: background .3s; }
+.ob-progress-step.done { background: var(--green); }
+.ob-progress-step.active { background: var(--green); opacity: .5; }
+
+.ob-title { font-family: var(--font-serif); font-size: 26px; color: var(--text); margin-bottom: 6px; }
+.ob-sub { font-size: 14px; color: var(--text-3); margin-bottom: 24px; line-height: 1.6; }
+
+.ob-btn {
+  padding: 13px 24px; background: var(--green); color: white; border: none;
+  border-radius: var(--radius); font-family: var(--font-body); font-size: 14px;
+  font-weight: 600; cursor: pointer; transition: background .15s;
+}
+.ob-btn:hover { background: var(--green-mid); }
+.ob-btn:disabled { opacity: .5; cursor: default; }
+.ob-btn-ghost { background: transparent; border: 0.5px solid var(--border); color: var(--text-2); margin-right: 8px; }
+.ob-btn-ghost:hover { border-color: var(--green); color: var(--green); background: var(--green-light); }
+
+.success-icon { width: 64px; height: 64px; background: var(--green); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 20px; }
+</style>
+</head>
+<body>
+<div class="app app-narrow">
+  <!-- Header -->
+  <div class="header">
+    <a href="index.html" class="header-home">
+      <div class="logo"><svg viewBox="0 0 20 20" fill="none" width="20" height="20"><path d="M10 2C10 2 4 8 4 12a6 6 0 0012 0c0-4-6-10-6-10z" fill="white" opacity=".95"/><path d="M10 8c0 0-2 3-2 5a2 2 0 004 0c0-2-2-5-2-5z" fill="white" opacity=".45"/></svg></div>
+      <span class="wordmark">Stoke</span>
+    </a>
+  </div>
+
+  <div class="onboarding-wrap">
+
+    <!-- Progress -->
+    <div class="ob-progress">
+      <div class="ob-progress-step done" id="prog-1"></div>
+      <div class="ob-progress-step active" id="prog-2"></div>
+      <div class="ob-progress-step" id="prog-3"></div>
+      <div class="ob-progress-step" id="prog-4"></div>
+    </div>
+
+    <!-- Step 1: Choose vertical -->
+    <div class="ob-step active" id="step-1">
+      <div class="ob-title">What kind of business do you run?</div>
+      <div class="ob-sub">Stoke will configure itself for your industry — the right language, workflows, and defaults for how your business actually operates.</div>
+
+      <div class="vertical-grid" id="vertical-grid">
+        <div class="vertical-card" data-vertical="outdoor_service" onclick="selectVertical(this)">
+          <div class="vc-icon">&#x1F6F6;</div>
+          <div class="vc-name">Outdoor & Water Sports</div>
+          <div class="vc-desc">Kayak shops, sailing schools, tour operators, outfitters</div>
+        </div>
+        <div class="vertical-card" data-vertical="real_estate" onclick="selectVertical(this)">
+          <div class="vc-icon">&#x1F3E1;</div>
+          <div class="vc-name">Real Estate</div>
+          <div class="vc-desc">Buyer/seller agents, property managers, brokers</div>
+        </div>
+        <div class="vertical-card" data-vertical="contractor" onclick="selectVertical(this)">
+          <div class="vc-icon">&#x1F6E0;</div>
+          <div class="vc-name">Contractor & Trades</div>
+          <div class="vc-desc">General contractors, plumbers, electricians, landscaping</div>
+        </div>
+        <div class="vertical-card" data-vertical="salon_wellness" onclick="selectVertical(this)">
+          <div class="vc-icon">&#x2728;</div>
+          <div class="vc-name">Salon & Wellness</div>
+          <div class="vc-desc">Hair salons, spas, massage, yoga studios</div>
+        </div>
+        <div class="vertical-card" data-vertical="other" onclick="selectVertical(this)">
+          <div class="vc-icon">&#x1F4BC;</div>
+          <div class="vc-name">Other Service Business</div>
+          <div class="vc-desc">Any other local service business</div>
+        </div>
+      </div>
+
+      <button class="ob-btn" id="btn-step1" onclick="goToStep(2)" disabled>Continue &rarr;</button>
+    </div>
+
+    <!-- Step 2: AI Interview -->
+    <div class="ob-step" id="step-2">
+      <div class="ob-title">Tell me about your business</div>
+      <div class="ob-sub">I'll ask you a few questions to set everything up. You can type or use your voice.</div>
+
+      <div class="chat-wrap">
+        <div class="chat-messages" id="chat-messages"></div>
+        <div class="chat-input-row">
+          <textarea class="chat-input" id="chat-input" placeholder="Type your answer here..." rows="1"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}"
+            oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
+          <button class="chat-send-btn" id="chat-send" onclick="sendChat()">&#x2191;</button>
+        </div>
+      </div>
+
+      <div id="profile-complete-section" style="display:none">
+        <button class="ob-btn" onclick="goToStep(3)">Review your profile &rarr;</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Review profile -->
+    <div class="ob-step" id="step-3">
+      <div class="ob-title">Here's what Stoke learned</div>
+      <div class="ob-sub">Review your business profile. Everything is editable.</div>
+
+      <div class="profile-review" id="profile-review-content">
+        <!-- Populated by JS -->
+      </div>
+
+      <div style="margin-top: 20px">
+        <div class="ob-title" style="font-size:18px;margin-bottom:8px">How hands-on do you want to be?</div>
+        <div style="font-size:13px;color:var(--text-3);margin-bottom:14px">You can change this anytime in Settings.</div>
+        <div class="automation-cards">
+          <div class="auto-card selected" data-level="review_all" onclick="selectAutomation(this)">
+            <div class="auto-icon">&#x1F440;</div>
+            <div class="auto-name">Review Everything</div>
+            <div class="auto-desc">Stoke suggests. You approve every action. Best when starting out.</div>
+          </div>
+          <div class="auto-card" data-level="smart_confirm" onclick="selectAutomation(this)">
+            <div class="auto-icon">&#x26A1;</div>
+            <div class="auto-name">Smart Confirm</div>
+            <div class="auto-desc">Stoke handles routine tasks automatically. Flags anything unusual.</div>
+          </div>
+          <div class="auto-card" data-level="autopilot" onclick="selectAutomation(this)">
+            <div class="auto-icon">&#x1F680;</div>
+            <div class="auto-name">Autopilot</div>
+            <div class="auto-desc">Stoke runs your front office. You review a daily digest.</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:24px">
+        <button class="ob-btn ob-btn-ghost" onclick="goToStep(2)">&#x2190; Back</button>
+        <button class="ob-btn" onclick="saveAndFinish()">Launch Stoke &rarr;</button>
+      </div>
+    </div>
+
+    <!-- Step 4: Done -->
+    <div class="ob-step" id="step-4">
+      <div style="text-align:center;padding:40px 0">
+        <div class="success-icon">&#x2713;</div>
+        <div class="ob-title">You're all set!</div>
+        <div class="ob-sub" style="max-width:400px;margin:0 auto 32px">Stoke is configured for your business. Your agents know your services, your pricing, and your voice.</div>
+        <a href="dashboard.html" class="ob-btn" style="text-decoration:none;display:inline-block">Go to your dashboard &rarr;</a>
+      </div>
+    </div>
+
+  </div><!-- /onboarding-wrap -->
+</div><!-- /app -->
+
+<script>
+let selectedVertical = '';
+let selectedAutomation = 'review_all';
+let chatMessages = [];
+let extractedProfile = null;
+
+// ── STEP 1: Vertical selection ────────────────────────────────────────────
+function selectVertical(card) {
+  document.querySelectorAll('.vertical-card').forEach(c => c.classList.remove('selected'));
+  card.classList.add('selected');
+  selectedVertical = card.dataset.vertical;
+  document.getElementById('btn-step1').disabled = false;
+}
+
+// ── STEP NAVIGATION ───────────────────────────────────────────────────────
+function goToStep(n) {
+  document.querySelectorAll('.ob-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('step-' + n).classList.add('active');
+
+  // Update progress
+  for(let i = 1; i <= 4; i++){
+    const el = document.getElementById('prog-' + i);
+    el.className = 'ob-progress-step' + (i < n ? ' done' : i === n ? ' active' : '');
+  }
+
+  if(n === 2 && chatMessages.length === 0) startInterview();
+  if(n === 3) renderProfileReview();
+  window.scrollTo(0, 0);
+}
+
+// ── STEP 2: AI Interview ──────────────────────────────────────────────────
+function addMessage(role, text) {
+  const container = document.getElementById('chat-messages');
+
+  // Remove typing indicator if present
+  const typing = document.getElementById('typing-indicator');
+  if(typing) typing.remove();
+
+  const div = document.createElement('div');
+  div.className = 'chat-msg ' + (role === 'assistant' ? 'stoke' : 'user');
+  div.innerHTML = `
+    <div class="chat-sender">${role === 'assistant' ? '✦ Stoke' : 'You'}</div>
+    <div class="chat-bubble">${text.replace(/\n/g, '<br>')}</div>
+  `;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  chatMessages.push({role, content: text});
+}
+
+function showTyping() {
+  const container = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.id = 'typing-indicator';
+  div.className = 'chat-msg stoke';
+  div.innerHTML = '<div class="chat-sender">✦ Stoke</div><div class="chat-bubble"><div class="typing-dots"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div>';
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+async function startInterview() {
+  showTyping();
+  const verticalNames = {
+    outdoor_service: 'outdoor/water sports business',
+    real_estate: 'real estate business',
+    contractor: 'contracting/trades business',
+    salon_wellness: 'salon or wellness business',
+    other: 'service business'
+  };
+
+  chatMessages = [{
+    role: 'user',
+    content: `I run a ${verticalNames[selectedVertical] || 'service business'}. Help me set up my Stoke account.`
+  }];
+
+  await fetchChat();
+}
+
+async function sendChat() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if(!text) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+  addMessage('user', text);
+  chatMessages.push({role:'user', content: text});
+
+  // Remove the message we just added to avoid double-adding in fetchChat
+  chatMessages.pop();
+  chatMessages.push({role:'user', content: text});
+
+  document.getElementById('chat-send').disabled = true;
+  showTyping();
+  await fetchChat();
+  document.getElementById('chat-send').disabled = false;
+}
+
+async function fetchChat() {
+  try {
+    const resp = await fetch('/api/onboarding/chat', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
+      body: JSON.stringify({messages: chatMessages, vertical: selectedVertical})
+    });
+    const data = await resp.json();
+
+    if(data.ok) {
+      addMessage('assistant', data.message || 'Tell me more about your business.');
+
+      if(data.profile_complete && data.extracted_profile) {
+        extractedProfile = data.extracted_profile;
+        document.getElementById('profile-complete-section').style.display = 'block';
+        // Auto-advance after a short delay
+        setTimeout(() => goToStep(3), 1500);
+      }
+    }
+  } catch(e) {
+    addMessage('assistant', 'Something went wrong. Please try again.');
+  }
+}
+
+// ── STEP 3: Profile review ────────────────────────────────────────────────
+function renderProfileReview() {
+  const p = extractedProfile || {};
+  const container = document.getElementById('profile-review-content');
+
+  const rows = [
+    ['Business Name', p.name || '—'],
+    ['Location', [p.city, p.area].filter(Boolean).join(', ') || '—'],
+    ['Phone', p.phone || '—'],
+    ['Website', p.website || '—'],
+    ['Industry', p.vertical ? p.vertical.replace(/_/g,' ') : selectedVertical.replace(/_/g,' ')],
+    ['Services', p.services ? p.services.map(s => `${s.name} ($${s.base_price}/${s.price_unit})`).join(', ') : '—'],
+    ['Communication style', p.voice?.style || '—'],
+  ];
+
+  container.innerHTML = rows.map(([label, value]) => `
+    <div class="pr-row">
+      <div class="pr-label">${label}</div>
+      <div class="pr-value">${value}</div>
+    </div>
+  `).join('');
+}
+
+function selectAutomation(card) {
+  document.querySelectorAll('.auto-card').forEach(c => c.classList.remove('selected'));
+  card.classList.add('selected');
+  selectedAutomation = card.dataset.level;
+}
+
+// ── SAVE AND FINISH ───────────────────────────────────────────────────────
+async function saveAndFinish() {
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  const p = extractedProfile || {};
+
+  try {
+    await fetch('/api/profile', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
+      body: JSON.stringify({
+        name: p.name,
+        city: p.city,
+        area: p.area,
+        phone: p.phone,
+        website: p.website,
+        vertical: p.vertical || selectedVertical,
+        automation_level: selectedAutomation,
+        onboarding_complete: 1,
+        settings: {
+          business: {
+            name: p.name,
+            city: p.city,
+            area: p.area,
+            phone: p.phone,
+            website: p.website,
+          },
+          voice: p.voice || null,
+          vertical: p.vertical || selectedVertical
+        },
+        preset_data: p
+      })
+    });
+
+    // Save services if we got them
+    if(p.services && p.services.length > 0){
+      for(const svc of p.services){
+        await fetch('/api/services', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          credentials: 'include',
+          body: JSON.stringify(svc)
+        }).catch(()=>{});
+      }
+    }
+
+    localStorage.setItem('stoke_onboarding_complete', '1');
+    goToStep(4);
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = 'Launch Stoke →';
+    alert('Could not save profile. Please try again.');
+  }
+}
+</script>
+</body>
+</html>

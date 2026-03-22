@@ -1,0 +1,184 @@
+{
+  "outdoor_service": {
+    "key": "outdoor_service",
+    "name": "Outdoor & Water Sports",
+    "description": "Kayak shops, sailing schools, tour operators, outfitters",
+    "vocabulary": {
+      "job": "booking",
+      "jobs": "bookings",
+      "invoice": "invoice",
+      "customer": "customer",
+      "customers": "customers",
+      "appointment": "booking",
+      "lead": "inquiry",
+      "proposal": "quote",
+      "service_area": "service area",
+      "transaction": "booking"
+    },
+    "services_template": [
+      {"name": "Kayak Rental", "type_key": "rental", "price_unit": "hour", "base_price": 45, "duration_minutes": 120, "color": "#2196F3"},
+      {"name": "Guided Tour", "type_key": "rental", "price_unit": "person", "base_price": 75, "duration_minutes": 180, "color": "#42A5F5"},
+      {"name": "Kayak Lesson", "type_key": "lesson", "price_unit": "person", "base_price": 65, "duration_minutes": 90, "color": "#2E7D32"},
+      {"name": "Sailing Lesson", "type_key": "lesson", "price_unit": "person", "base_price": 85, "duration_minutes": 120, "color": "#1B5E20"},
+      {"name": "Custom Rigging", "type_key": "rigging", "price_unit": "flat", "base_price": 250, "duration_minutes": 480, "color": "#FF6D00"},
+      {"name": "Repair & Service", "type_key": "repair", "price_unit": "hour", "base_price": 95, "duration_minutes": 180, "color": "#E65100"},
+      {"name": "Sailboat Demo", "type_key": "sailboat", "price_unit": "flat", "base_price": 0, "duration_minutes": 120, "color": "#6A1B9A"}
+    ],
+    "pricing_model": "hourly_and_flat",
+    "follow_up_cadence": {
+      "initial_response": "2hr",
+      "quote_follow_up": "48hr",
+      "booking_reminder": "24hr",
+      "post_service": "24hr",
+      "seasonal_outreach": "90day"
+    },
+    "channel_priority": ["email", "phone", "text"],
+    "lead_signals": ["rental", "rent", "lesson", "tour", "kayak", "sail", "paddle", "boat", "rigging", "repair", "book", "available", "schedule", "how much", "price", "cost", "group", "family"],
+    "seasonal_notes": "Peak season spring-fall. Water temperature affects demand. Weather-dependent cancellations common.",
+    "automation_hints": {
+      "high_confidence_signals": ["price inquiry", "specific date mentioned", "party size mentioned"],
+      "always_review": ["complaint", "refund", "cancellation", "large group over 10"],
+      "quick_reply_triggers": ["availability", "pricing", "how long"]
+    },
+    "tone_defaults": {
+      "style": "warm, adventurous, local",
+      "avoid": ["corporate language", "overly formal", "excessive exclamation points"],
+      "sample_phrase": "We love getting people out on the water"
+    }
+  },
+  "real_estate": {
+    "key": "real_estate",
+    "name": "Real Estate",
+    "description": "Buyer/seller agents, property managers, brokers",
+    "vocabulary": {
+      "job": "showing",
+      "jobs": "showings",
+      "invoice": "commission statement",
+      "customer": "client",
+      "customers": "clients",
+      "appointment": "showing",
+      "lead": "prospect",
+      "proposal": "CMA",
+      "service_area": "market area",
+      "transaction": "transaction"
+    },
+    "services_template": [
+      {"name": "Buyer Consultation", "type_key": "consultation", "price_unit": "flat", "base_price": 0, "duration_minutes": 60, "color": "#2196F3"},
+      {"name": "Property Showing", "type_key": "showing", "price_unit": "flat", "base_price": 0, "duration_minutes": 60, "color": "#1565C0"},
+      {"name": "Listing Appointment", "type_key": "listing", "price_unit": "flat", "base_price": 0, "duration_minutes": 90, "color": "#FF6D00"},
+      {"name": "Offer Presentation", "type_key": "offer", "price_unit": "flat", "base_price": 0, "duration_minutes": 60, "color": "#2E7D32"},
+      {"name": "Open House", "type_key": "open_house", "price_unit": "flat", "base_price": 0, "duration_minutes": 180, "color": "#6A1B9A"},
+      {"name": "Closing", "type_key": "closing", "price_unit": "flat", "base_price": 0, "duration_minutes": 120, "color": "#E65100"}
+    ],
+    "pricing_model": "commission",
+    "follow_up_cadence": {
+      "initial_response": "30min",
+      "showing_follow_up": "24hr",
+      "nurture_cold_lead": "7day",
+      "market_update": "30day",
+      "long_nurture": "90day"
+    },
+    "channel_priority": ["sms", "email", "instagram", "phone"],
+    "lead_signals": ["interested", "listing", "showing", "house", "home", "property", "pre-approved", "buying", "selling", "price", "neighborhood", "school district", "bedrooms", "move", "relocating"],
+    "seasonal_notes": "Spring and fall are peak buying seasons. Holiday season is slow. Inventory affects urgency.",
+    "automation_hints": {
+      "high_confidence_signals": ["specific address mentioned", "budget mentioned", "timeline mentioned", "pre-approved"],
+      "always_review": ["offer submission", "contract terms", "price negotiation"],
+      "quick_reply_triggers": ["is this available", "can I see it", "what is the price"]
+    },
+    "tone_defaults": {
+      "style": "professional, responsive, knowledgeable",
+      "avoid": ["pushy sales language", "generic responses", "delayed replies"],
+      "sample_phrase": "I can help you find exactly what you are looking for"
+    }
+  },
+  "contractor": {
+    "key": "contractor",
+    "name": "Contractor & Trades",
+    "description": "General contractors, plumbers, electricians, HVAC, landscaping, pressure washing",
+    "vocabulary": {
+      "job": "job",
+      "jobs": "jobs",
+      "invoice": "invoice",
+      "customer": "customer",
+      "customers": "customers",
+      "appointment": "site visit",
+      "lead": "lead",
+      "proposal": "estimate",
+      "service_area": "service area",
+      "transaction": "job"
+    },
+    "services_template": [
+      {"name": "Free Estimate", "type_key": "estimate", "price_unit": "flat", "base_price": 0, "duration_minutes": 60, "color": "#2196F3"},
+      {"name": "Service Call", "type_key": "service", "price_unit": "hour", "base_price": 125, "duration_minutes": 120, "color": "#FF6D00"},
+      {"name": "Installation", "type_key": "install", "price_unit": "flat", "base_price": 500, "duration_minutes": 480, "color": "#2E7D32"},
+      {"name": "Repair", "type_key": "repair", "price_unit": "hour", "base_price": 95, "duration_minutes": 120, "color": "#E65100"},
+      {"name": "Maintenance", "type_key": "maintenance", "price_unit": "flat", "base_price": 150, "duration_minutes": 60, "color": "#6A1B9A"},
+      {"name": "Emergency Call", "type_key": "emergency", "price_unit": "hour", "base_price": 175, "duration_minutes": 120, "color": "#c0392b"}
+    ],
+    "pricing_model": "hourly_and_flat",
+    "follow_up_cadence": {
+      "initial_response": "1hr",
+      "estimate_follow_up": "48hr",
+      "job_reminder": "24hr",
+      "payment_reminder": "7day",
+      "repeat_customer": "180day"
+    },
+    "channel_priority": ["phone", "text", "email"],
+    "lead_signals": ["fix", "repair", "install", "replace", "broken", "leaking", "estimate", "quote", "how much", "available", "emergency", "not working", "cleaning", "painting", "build"],
+    "seasonal_notes": "HVAC peaks in summer and winter. Landscaping peaks spring through fall. Weather delays common.",
+    "automation_hints": {
+      "high_confidence_signals": ["emergency", "not working", "broken", "flooding", "specific job type + address"],
+      "always_review": ["large project over $5000", "permit required", "structural work"],
+      "quick_reply_triggers": ["emergency", "urgent", "as soon as possible", "tonight"]
+    },
+    "tone_defaults": {
+      "style": "direct, reliable, local",
+      "avoid": ["overpromising timelines", "vague estimates", "corporate speak"],
+      "sample_phrase": "We will get that taken care of for you"
+    }
+  },
+  "salon_wellness": {
+    "key": "salon_wellness",
+    "name": "Salon & Wellness",
+    "description": "Hair salons, spas, massage, yoga studios, personal trainers",
+    "vocabulary": {
+      "job": "appointment",
+      "jobs": "appointments",
+      "invoice": "receipt",
+      "customer": "client",
+      "customers": "clients",
+      "appointment": "appointment",
+      "lead": "new client inquiry",
+      "proposal": "service menu",
+      "service_area": "location",
+      "transaction": "visit"
+    },
+    "services_template": [
+      {"name": "Consultation", "type_key": "consultation", "price_unit": "flat", "base_price": 0, "duration_minutes": 30, "color": "#E91E63"},
+      {"name": "Standard Service", "type_key": "service", "price_unit": "flat", "base_price": 75, "duration_minutes": 60, "color": "#9C27B0"},
+      {"name": "Premium Service", "type_key": "premium", "price_unit": "flat", "base_price": 150, "duration_minutes": 90, "color": "#3F51B5"},
+      {"name": "Package Session", "type_key": "package", "price_unit": "flat", "base_price": 200, "duration_minutes": 120, "color": "#2196F3"}
+    ],
+    "pricing_model": "flat_rate",
+    "follow_up_cadence": {
+      "initial_response": "1hr",
+      "booking_reminder": "24hr",
+      "post_service": "48hr",
+      "rebooking_prompt": "30day"
+    },
+    "channel_priority": ["instagram", "text", "email"],
+    "lead_signals": ["appointment", "available", "book", "schedule", "haircut", "massage", "facial", "nails", "class", "session", "consultation"],
+    "seasonal_notes": "Holidays are peak booking periods. Summer weddings drive demand. New Year resolutions spike January.",
+    "automation_hints": {
+      "high_confidence_signals": ["specific service mentioned", "date/time preference", "returning client"],
+      "always_review": ["complaint", "allergy concern", "medical condition mentioned"],
+      "quick_reply_triggers": ["available this week", "can I book", "do you have openings"]
+    },
+    "tone_defaults": {
+      "style": "warm, personal, caring",
+      "avoid": ["clinical language", "rushed responses"],
+      "sample_phrase": "We would love to take care of you"
+    }
+  }
+}

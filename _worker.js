@@ -121,7 +121,7 @@ async function sendEmail(env, to, subject, htmlBody){
 
 async function sendMagicLink(email, tok, env){
   const domain = env.APP_DOMAIN || 'withstoke.com';
-  const link = 'https://'+domain+'/auth/verify?token='+tok;
+  const link = 'https://'+domain+'/auth/verify?token='+tok+'&redirect=/dashboard.html';
   let name = '';
   try { const u = await env.DB.prepare('SELECT name FROM users WHERE email=?').bind(email).first(); name = u?.name||''; } catch(e){}
   await sendEmail(env, email, 'Sign in to Stoke', magicLinkEmail(link, name));
@@ -190,7 +190,8 @@ async function handleVerify(request,env){
   if(!user)return Response.redirect(`https://${url.host}/login.html?error=nouser`,302);
   const sessionToken=token(32);
   await env.DB.prepare('INSERT INTO sessions(token,user_id,business_id,created_at,expires_at)VALUES(?,?,?,?,?)').bind(sessionToken,user.id,user.business_id,now(),now()+SESSION_TTL).run();
-  return new Response(null,{status:302,headers:{'Location':`https://${url.host}/`,'Set-Cookie':`stoke_session=${sessionToken}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_TTL}`}});
+  const redirectTo=url.searchParams.get('redirect')||'/dashboard.html';
+  return new Response(null,{status:302,headers:{'Location':`https://${url.host}${redirectTo}`,'Set-Cookie':`stoke_session=${sessionToken}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_TTL}`}});
 }
 
 async function handleLogout(request,env){
@@ -438,6 +439,587 @@ async function handleStripeInvoice(request,env){
     const finalInv=await fetch(`https://api.stripe.com/v1/invoices/${invData.id}`,{headers:{'Authorization':auth}}).then(r=>r.json());
     return json({ok:true,stripeId:invData.id,paymentUrl:finalInv.hosted_invoice_url||`https://dashboard.stripe.com/invoices/${invData.id}`});
   }catch(e){return err('Stripe API error: '+e.message);}
+}
+
+
+
+// =============================================================================
+// STOKE PLATFORM LAYER
+// Dynamic business profiles, vertical presets, automation levels
+// No hardcoded business data - everything reads from D1
+// =============================================================================
+
+// Vertical preset library - embedded so no extra fetch needed
+// Each vertical knows the industry it serves
+const VERTICAL_PRESETS = {
+  outdoor_service: {
+    name: 'Outdoor & Water Sports',
+    vocabulary: { job:'booking', customer:'customer', invoice:'invoice', lead:'inquiry', proposal:'quote' },
+    lead_signals: ['rental','rent','lesson','tour','kayak','sail','paddle','boat','rigging','repair','book','available','schedule','how much','price','cost'],
+    pricing_model: 'hourly_and_flat',
+    follow_up_cadence: { initial:'2hr', quote:'48hr', reminder:'24hr', post_service:'24hr' },
+    channel_priority: ['email','phone','text'],
+    tone: 'warm, adventurous, local',
+    service_types: ['rental','lesson','tour','rigging','repair','sailboat','blocked']
+  },
+  real_estate: {
+    name: 'Real Estate',
+    vocabulary: { job:'showing', customer:'client', invoice:'commission statement', lead:'prospect', proposal:'CMA' },
+    lead_signals: ['interested','listing','showing','house','home','property','buying','selling','price','bedrooms','move','relocating','pre-approved'],
+    pricing_model: 'commission',
+    follow_up_cadence: { initial:'30min', quote:'24hr', reminder:'24hr', post_service:'48hr', nurture:'7day' },
+    channel_priority: ['sms','email','instagram','phone'],
+    tone: 'professional, responsive, knowledgeable',
+    service_types: ['consultation','showing','listing','offer','open_house','closing']
+  },
+  contractor: {
+    name: 'Contractor & Trades',
+    vocabulary: { job:'job', customer:'customer', invoice:'invoice', lead:'lead', proposal:'estimate' },
+    lead_signals: ['fix','repair','install','replace','broken','leaking','estimate','quote','how much','emergency','not working','cleaning'],
+    pricing_model: 'hourly_and_flat',
+    follow_up_cadence: { initial:'1hr', quote:'48hr', reminder:'24hr', post_service:'72hr' },
+    channel_priority: ['phone','text','email'],
+    tone: 'direct, reliable, local',
+    service_types: ['estimate','service','install','repair','maintenance','emergency']
+  },
+  salon_wellness: {
+    name: 'Salon & Wellness',
+    vocabulary: { job:'appointment', customer:'client', invoice:'receipt', lead:'new client inquiry', proposal:'service menu' },
+    lead_signals: ['appointment','available','book','schedule','haircut','massage','facial','nails','class','session'],
+    pricing_model: 'flat_rate',
+    follow_up_cadence: { initial:'1hr', quote:'24hr', reminder:'24hr', post_service:'48hr' },
+    channel_priority: ['instagram','text','email'],
+    tone: 'warm, personal, caring',
+    service_types: ['consultation','service','premium','package']
+  },
+  other: {
+    name: 'General Service Business',
+    vocabulary: { job:'job', customer:'customer', invoice:'invoice', lead:'lead', proposal:'quote' },
+    lead_signals: ['inquiry','available','schedule','book','how much','price','service'],
+    pricing_model: 'hourly_and_flat',
+    follow_up_cadence: { initial:'2hr', quote:'48hr', reminder:'24hr', post_service:'48hr' },
+    channel_priority: ['email','phone','text'],
+    tone: 'professional, helpful, responsive',
+    service_types: ['service','consultation','repair','other']
+  }
+};
+
+// Load full business profile from D1 - the single source of truth
+async function loadBusinessProfile(env, businessId){
+  try {
+    const [biz, settings, services, preset] = await Promise.all([
+      env.DB.prepare('SELECT * FROM businesses WHERE id=?').bind(businessId).first(),
+      env.DB.prepare('SELECT data FROM settings WHERE business_id=?').bind(businessId).first(),
+      env.DB.prepare('SELECT * FROM service_types WHERE business_id=? AND active=1 ORDER BY name').bind(businessId).all(),
+      env.DB.prepare('SELECT * FROM business_presets WHERE business_id=?').bind(businessId).first()
+    ]);
+
+    const settingsData = settings?.data ? JSON.parse(settings.data) : {};
+    const verticalKey = biz?.vertical || settingsData?.vertical || 'outdoor_service';
+    const verticalPreset = VERTICAL_PRESETS[verticalKey] || VERTICAL_PRESETS.other;
+
+    // Merge vertical preset with business-specific customizations
+    const customPreset = preset?.preset_data ? JSON.parse(preset.preset_data) : {};
+
+    return {
+      id: businessId,
+      name: biz?.name || settingsData?.business?.name || 'Your Business',
+      vertical: verticalKey,
+      verticalName: verticalPreset.name,
+      city: biz?.city || settingsData?.business?.city || '',
+      area: biz?.area || settingsData?.business?.area || '',
+      website: biz?.website || settingsData?.business?.website || '',
+      phone: biz?.phone || settingsData?.business?.phone || '',
+      plan: biz?.plan || 'trial',
+      automation_level: biz?.automation_level || 'review_all',
+      onboarding_complete: biz?.onboarding_complete || 0,
+      // Merged settings
+      settings: settingsData,
+      // Vertical knowledge
+      preset: { ...verticalPreset, ...customPreset },
+      // Services from D1
+      services: services?.results || [],
+      // Voice profile
+      voice: settingsData?.voice || null
+    };
+  } catch(e) {
+    console.error('[Profile] Error loading profile:', e.message);
+    // Return minimal fallback - never hardcode Trusty Sail
+    return {
+      id: businessId,
+      name: 'Your Business',
+      vertical: 'other',
+      verticalName: 'General Service Business',
+      city: '', area: '', website: '', phone: '',
+      plan: 'trial',
+      automation_level: 'review_all',
+      onboarding_complete: 0,
+      settings: {},
+      preset: VERTICAL_PRESETS.other,
+      services: [],
+      voice: null
+    };
+  }
+}
+
+// Build dynamic agent context - the core of the platform architecture
+// Every agent call goes through this - no hardcoding anywhere
+function buildAgentContext(profile, agentType, extra = {}){
+  const p = profile.preset;
+  const v = p.vocabulary || {};
+  const services = profile.services.length > 0
+    ? profile.services.map(s => `${s.name}: $${s.base_price}/${s.price_unit}, ~${s.default_duration_minutes}min`).join('\n')
+    : 'Services not configured yet - ask the customer what they need';
+
+  const businessContext = `Business: ${profile.name}
+Location: ${[profile.city, profile.area].filter(Boolean).join(', ') || 'Location not set'}
+Industry: ${profile.verticalName}
+Phone: ${profile.phone || 'Not set'}
+Website: ${profile.website || 'Not set'}`;
+
+  const languageContext = `Use this industry-specific language:
+- Call jobs/appointments: "${v.job || 'booking'}"
+- Call customers: "${v.customer || 'customer'}"
+- Call invoices: "${v.invoice || 'invoice'}"
+- Call proposals: "${v.proposal || 'quote'}"`;
+
+  const voiceContext = profile.voice?.generalDesc
+    ? `Communication style: ${profile.voice.generalDesc}`
+    : `Communication style: ${p.tone || 'professional and helpful'}`;
+
+  const systemPrompts = {
+    router: `You are the intake router for ${profile.name}, a ${profile.verticalName} business.
+${businessContext}
+
+Classify incoming messages and route them to the right agent.
+Known service types: ${p.service_types?.join(', ') || 'various services'}
+Lead signals to watch for: ${p.lead_signals?.slice(0,10).join(', ')}
+
+Respond ONLY with valid JSON:
+{
+  "intent": "lead_parse|book|invoice|reply|social|query|other",
+  "confidence": 0.0-1.0,
+  "summary": "one sentence",
+  "agent": "agent name",
+  "urgency": "high|medium|low"
+}`,
+
+    lead_parser: `You are the lead intake specialist for ${profile.name}.
+${businessContext}
+
+Extract inquiry details. ${languageContext}
+
+Services offered:
+${services}
+
+Pricing model: ${p.pricing_model || 'varies'}
+Follow-up timing: Respond within ${p.follow_up_cadence?.initial || '2 hours'}
+
+Respond ONLY with valid JSON:
+{
+  "customerName": "full name or null",
+  "customerEmail": "email or null",
+  "customerPhone": "phone or null",
+  "serviceType": "one of the business service types or other",
+  "serviceLabel": "human readable service name",
+  "preferredDate": "ISO date or null",
+  "preferredTime": "time string or null",
+  "duration": "estimated hours or null",
+  "partySize": "number or null",
+  "estimatedAmount": "dollar amount or null",
+  "notes": "any other details",
+  "urgency": "high|medium|low",
+  "confidence": 0.0-1.0,
+  "summary": "one sentence summary",
+  "suggestedReply": "a brief friendly response to send"
+}`,
+
+    invoice_agent: `You are the billing specialist for ${profile.name}.
+${businessContext}
+${languageContext}
+
+Generate professional invoice line items from the job description.
+
+Services and pricing:
+${services}
+
+Pricing model: ${p.pricing_model || 'hourly and flat'}
+
+Respond ONLY with valid JSON:
+{
+  "lineItems": [{"desc": "description", "qty": 1, "price": 0.00}],
+  "notes": "thank you note and payment terms",
+  "totalEstimate": 0.00,
+  "serviceType": "service type key"
+}
+
+Always break labor and materials into separate line items.
+Never guess pricing if you don't have it - use 0.00 and note "price TBD".`,
+
+    reply_writer: `You are writing on behalf of ${profile.name}.
+${businessContext}
+${voiceContext}
+${languageContext}
+
+Write a ${extra.replyType || 'professional'} message.
+Keep it 2-4 sentences. Sound human, not like a bot.
+Follow-up cadence for this business: ${JSON.stringify(p.follow_up_cadence || {})}
+Return ONLY the message text.`,
+
+    social_agent: `You are the content creator for ${profile.name}, a ${profile.verticalName} business.
+${businessContext}
+${voiceContext}
+
+Create engaging social media content that reflects the authentic voice of this business.
+Industry context: ${profile.verticalName}
+Location context: ${[profile.city, profile.area].filter(Boolean).join(', ')}`,
+
+    onboarding: `You are helping a new ${profile.verticalName} business owner set up their Stoke account.
+Ask clear, specific questions to understand their business.
+You need to gather:
+1. Business name and location
+2. What services they offer and typical pricing
+3. How customers usually contact them
+4. Their communication style and tone
+5. How they want Stoke to handle automation
+
+Be conversational and encouraging. Ask one or two questions at a time.
+When you have enough information, output a structured profile as JSON.`
+  };
+
+  return systemPrompts[agentType] || systemPrompts.reply_writer;
+}
+
+// Enforce automation level - decides if action goes straight through or needs review
+function shouldAutomate(profile, actionType, confidence = 1.0){
+  const level = profile.automation_level || 'review_all';
+
+  if(level === 'review_all') return false;
+
+  if(level === 'smart_confirm'){
+    // Auto-handle only high-confidence, low-risk actions
+    const autoActions = ['lead_parse', 'draft_reply', 'draft_event'];
+    const highRiskActions = ['send_email', 'send_invoice', 'book_appointment'];
+    if(highRiskActions.includes(actionType)) return false;
+    return autoActions.includes(actionType) && confidence >= 0.85;
+  }
+
+  if(level === 'autopilot'){
+    // Auto-handle everything except financial and irreversible actions
+    const alwaysReview = ['send_invoice', 'charge_customer', 'cancel_booking'];
+    return !alwaysReview.includes(actionType) && confidence >= 0.7;
+  }
+
+  return false;
+}
+
+// Log automation action to audit trail
+async function logAutomation(env, businessId, actionType, description, data, agent, confidence, status = 'completed'){
+  try {
+    const id = 'log_' + token(8);
+    await env.DB.prepare(
+      'INSERT INTO automation_log(id,business_id,action_type,description,data,agent,confidence,status,created_at) VALUES(?,?,?,?,?,?,?,?,?)'
+    ).bind(id, businessId, actionType, description, JSON.stringify(data), agent, confidence, status, now()).run();
+  } catch(e) {
+    console.warn('[AutoLog]', e.message);
+  }
+}
+
+// =============================================================================
+// UPDATED AGENT HANDLERS - now load from profile, no hardcoding
+// =============================================================================
+
+async function handleRouteV2(request, env){
+  const s = await requireAuth(request, env);
+  const b = await request.json();
+  const profile = await loadBusinessProfile(env, s.business_id);
+  const system = buildAgentContext(profile, 'router');
+  const userText = b.text || b.message || '';
+
+  const result = await callClaude(env, FAST_MODEL,
+    [{role:'user', content: userText}],
+    system, 200
+  );
+
+  try {
+    const parsed = JSON.parse(result.replace(/```json|```/g,'').trim());
+    return json({ok: true, ...parsed, vertical: profile.vertical});
+  } catch(e) {
+    return json({ok: true, intent: 'other', confidence: 0.5, summary: userText, agent: 'social_agent', vertical: profile.vertical});
+  }
+}
+
+async function handleLeadParseV2(request, env){
+  const s = await requireAuth(request, env);
+  const b = await request.json();
+  const profile = await loadBusinessProfile(env, s.business_id);
+  const system = buildAgentContext(profile, 'lead_parser');
+  const text = b.text || b.message || '';
+
+  const result = await callClaude(env, FAST_MODEL,
+    [{role:'user', content: text}],
+    system, 600
+  );
+
+  try {
+    const parsed = JSON.parse(result.replace(/```json|```/g,'').trim());
+    const automate = shouldAutomate(profile, 'lead_parse', parsed.confidence || 0);
+    const status = automate ? 'auto_processed' : 'pending_review';
+
+    // Save to lead_inbox
+    const inboxId = 'li_' + token(8);
+    try {
+      await env.DB.prepare(
+        'INSERT INTO lead_inbox(id,business_id,source,raw_content,parsed_data,status,confidence,received_at,created_at) VALUES(?,?,?,?,?,?,?,?,?)'
+      ).bind(inboxId, s.business_id, b.source||'manual', text, JSON.stringify(parsed), status, parsed.confidence||0, now(), now()).run();
+    } catch(e) { console.warn('[LeadInbox]', e.message); }
+
+    await logAutomation(env, s.business_id, 'lead_parsed',
+      `Lead from ${parsed.customerName||'unknown'}: ${parsed.summary}`,
+      parsed, 'lead_parser', parsed.confidence||0, status
+    );
+
+    return json({ok: true, lead: parsed, inbox_id: inboxId, auto_processed: automate, status, profile_vertical: profile.vertical});
+  } catch(e) {
+    return json({ok: false, error: 'Could not parse lead', raw: result});
+  }
+}
+
+async function handleInvoiceAgentV2(request, env){
+  const s = await requireAuth(request, env);
+  const b = await request.json();
+  const profile = await loadBusinessProfile(env, s.business_id);
+  const system = buildAgentContext(profile, 'invoice_agent');
+
+  const result = await callClaude(env, FAST_MODEL,
+    [{role:'user', content: `Service: ${b.serviceType||'general'}\nJob details: ${b.jobContext||''}`}],
+    system, 600
+  );
+
+  try {
+    const parsed = JSON.parse(result.replace(/```json|```/g,'').trim());
+    return json({ok: true, ...parsed, business_name: profile.name, vertical: profile.vertical});
+  } catch(e) {
+    return json({ok: false, error: 'Could not generate invoice', raw: result});
+  }
+}
+
+async function handleReplyWriterV2(request, env){
+  const s = await requireAuth(request, env);
+  const b = await request.json();
+  const profile = await loadBusinessProfile(env, s.business_id);
+  const system = buildAgentContext(profile, 'reply_writer', {replyType: b.replyType||'confirmation'});
+
+  const result = await callClaude(env, FULL_MODEL,
+    [{role:'user', content: b.context||''}],
+    system, 400
+  );
+
+  return json({ok: true, message: result, business_name: profile.name});
+}
+
+// =============================================================================
+// PROFILE & ONBOARDING API
+// =============================================================================
+
+async function handleGetProfile(request, env){
+  const s = await requireAuth(request, env);
+  const profile = await loadBusinessProfile(env, s.business_id);
+  return json({ok: true, profile});
+}
+
+async function handleSaveProfile(request, env){
+  const s = await requireAuth(request, env);
+  const b = await request.json();
+
+  // Update businesses table
+  const fields = [];
+  const values = [];
+  if(b.name){ fields.push('name=?'); values.push(b.name); }
+  if(b.city){ fields.push('city=?'); values.push(b.city); }
+  if(b.area){ fields.push('area=?'); values.push(b.area); }
+  if(b.website){ fields.push('website=?'); values.push(b.website); }
+  if(b.phone){ fields.push('phone=?'); values.push(b.phone); }
+  if(b.vertical){ fields.push('vertical=?'); values.push(b.vertical); }
+  if(b.automation_level){ fields.push('automation_level=?'); values.push(b.automation_level); }
+  if(b.onboarding_complete !== undefined){ fields.push('onboarding_complete=?'); values.push(b.onboarding_complete ? 1 : 0); }
+
+  if(fields.length > 0){
+    values.push(s.business_id);
+    await env.DB.prepare(`UPDATE businesses SET ${fields.join(',')} WHERE id=?`).bind(...values).run().catch(e => console.warn('[Profile]', e.message));
+  }
+
+  // Save business preset if provided
+  if(b.preset_data){
+    await env.DB.prepare(
+      'INSERT INTO business_presets(business_id,vertical_key,preset_data,updated_at) VALUES(?,?,?,?) ON CONFLICT(business_id) DO UPDATE SET preset_data=excluded.preset_data,vertical_key=excluded.vertical_key,updated_at=excluded.updated_at'
+    ).bind(s.business_id, b.vertical||'other', JSON.stringify(b.preset_data), now()).run().catch(e => console.warn('[Preset]', e.message));
+  }
+
+  // Update settings if provided
+  if(b.settings){
+    const existing = await env.DB.prepare('SELECT data FROM settings WHERE business_id=?').bind(s.business_id).first().catch(()=>null);
+    const current = existing?.data ? JSON.parse(existing.data) : {};
+    const merged = {...current, ...b.settings};
+    await env.DB.prepare('INSERT INTO settings(business_id,data,updated_at) VALUES(?,?,?) ON CONFLICT(business_id) DO UPDATE SET data=excluded.data,updated_at=excluded.updated_at')
+      .bind(s.business_id, JSON.stringify(merged), now()).run().catch(e => console.warn('[Settings]', e.message));
+  }
+
+  return json({ok: true, message: 'Profile updated'});
+}
+
+async function handleGetPresets(request, env){
+  // Return available vertical presets for onboarding
+  const presets = Object.entries(VERTICAL_PRESETS).map(([key, p]) => ({
+    key,
+    name: p.name,
+    description: key === 'outdoor_service' ? 'Kayak shops, sailing schools, tour operators, outfitters'
+      : key === 'real_estate' ? 'Buyer/seller agents, property managers, brokers'
+      : key === 'contractor' ? 'General contractors, plumbers, electricians, landscaping'
+      : key === 'salon_wellness' ? 'Hair salons, spas, massage, yoga studios'
+      : 'Any service business',
+    sample_services: p.service_types?.slice(0,4) || []
+  }));
+  return json({ok: true, presets});
+}
+
+async function handleOnboardingChat(request, env){
+  const s = await requireAuth(request, env);
+  const b = await request.json();
+  const profile = await loadBusinessProfile(env, s.business_id);
+
+  const messages = b.messages || [];
+  const verticalHint = b.vertical || profile.vertical || 'other';
+  const verticalPreset = VERTICAL_PRESETS[verticalHint] || VERTICAL_PRESETS.other;
+
+  const system = `You are Stoke's onboarding assistant helping set up a new ${verticalPreset.name} business account.
+
+Your goal: gather enough information to configure Stoke for this specific business.
+
+You need to learn:
+1. Business name, location, and what makes them unique
+2. Services they offer and typical pricing
+3. How customers reach them (email, phone, text, social media)
+4. Their communication style and brand voice
+5. How hands-on they want to be vs. letting Stoke automate
+
+Ask conversational questions, one topic at a time.
+Be encouraging - this business owner is about to save hours every week.
+
+When you have gathered enough information (at least 3-4 exchanges), output a special JSON block wrapped in <PROFILE> tags:
+<PROFILE>
+{
+  "name": "business name",
+  "city": "city",
+  "area": "region/area",
+  "phone": "phone",
+  "website": "website or null",
+  "vertical": "outdoor_service|real_estate|contractor|salon_wellness|other",
+  "services": [
+    {"name": "service name", "type_key": "type", "base_price": 0, "price_unit": "hour|flat|person", "duration_minutes": 60}
+  ],
+  "voice": {
+    "style": "description of their communication style",
+    "avoid": ["things to avoid"],
+    "sample_phrase": "a phrase that sounds like them"
+  },
+  "automation_level": "review_all",
+  "notes": "anything else important about this business"
+}
+</PROFILE>
+
+Do not output the JSON until you have enough information. Keep chatting until you do.`;
+
+  const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify({
+      model: FULL_MODEL,
+      max_tokens: 1000,
+      system,
+      messages
+    })
+  });
+
+  const data = await upstream.json();
+  const text = data.content?.[0]?.text || '';
+
+  // Check if the response contains a completed profile
+  const profileMatch = text.match(/<PROFILE>([\s\S]*?)<\/PROFILE>/);
+  if(profileMatch){
+    try {
+      const profileData = JSON.parse(profileMatch[1].trim());
+      return json({
+        ok: true,
+        message: text.replace(/<PROFILE>[\s\S]*?<\/PROFILE>/, '').trim(),
+        profile_complete: true,
+        extracted_profile: profileData
+      });
+    } catch(e) {}
+  }
+
+  return json({ok: true, message: text, profile_complete: false});
+}
+
+async function handleGetLeadInbox(request, env){
+  const s = await requireAuth(request, env);
+  const url = new URL(request.url);
+  const status = url.searchParams.get('status') || 'pending_review';
+  try {
+    const rows = await env.DB.prepare(
+      'SELECT * FROM lead_inbox WHERE business_id=? AND status=? ORDER BY received_at DESC LIMIT 50'
+    ).bind(s.business_id, status).all();
+    return json({ok: true, leads: rows.results||[]});
+  } catch(e) {
+    return json({ok: true, leads: []});
+  }
+}
+
+async function handleConfirmLead(request, env){
+  const s = await requireAuth(request, env);
+  const b = await request.json();
+  if(!b.inbox_id) return err('inbox_id required');
+
+  // Mark as confirmed in inbox
+  await env.DB.prepare('UPDATE lead_inbox SET status=?,reviewed_at=? WHERE id=? AND business_id=?')
+    .bind('confirmed', now(), b.inbox_id, s.business_id).run().catch(e => console.warn(e.message));
+
+  // Create calendar event from the lead data
+  if(b.event_data){
+    const eventId = 'evt_' + token(8);
+    const start = b.event_data.start_at || now() + 86400;
+    const end = b.event_data.end_at || start + 3600;
+    await env.DB.prepare(
+      'INSERT INTO events(id,business_id,type,title,start_at,end_at,customer_name,customer_email,customer_phone,notes,ai_suggested,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,1,?,?)'
+    ).bind(eventId, s.business_id, b.event_data.type||'other', b.event_data.title||'New Booking',
+      start, end, b.event_data.customerName||'', b.event_data.customerEmail||'',
+      b.event_data.customerPhone||'', b.event_data.notes||'', now(), now()
+    ).run().catch(e => console.warn('[Event]', e.message));
+
+    await logAutomation(env, s.business_id, 'event_created',
+      `Event confirmed: ${b.event_data.title}`, b.event_data, 'human_confirmed', 1.0, 'completed'
+    );
+
+    return json({ok: true, event_id: eventId});
+  }
+
+  return json({ok: true});
+}
+
+async function handleGetAutomationLog(request, env){
+  const s = await requireAuth(request, env);
+  try {
+    const rows = await env.DB.prepare(
+      'SELECT * FROM automation_log WHERE business_id=? ORDER BY created_at DESC LIMIT 100'
+    ).bind(s.business_id).all();
+    return json({ok: true, log: rows.results||[]});
+  } catch(e) {
+    return json({ok: true, log: []});
+  }
 }
 
 
@@ -717,9 +1299,7 @@ export default {
       if(path==='/api/leads/parse'&&method==='POST')return handleParseLead(request,env);
       if(path==='/api/email/confirmation'&&method==='POST')return handleSendConfirmation(request,env);
       if(path==='/api/email/invoice'&&method==='POST')return handleSendInvoiceEmail(request,env);
-      if(path==='/api/email/confirmation'&&method==='POST')return handleSendConfirmation(request,env);
-      if(path==='/api/email/invoice'&&method==='POST')return handleSendInvoiceEmail(request,env);
-      if(path==='/api/invoices'&&method==='GET')return handleListInvoices(request,env);
+            if(path==='/api/invoices'&&method==='GET')return handleListInvoices(request,env);
       if(path==='/api/invoices'&&method==='POST')return handleSaveInvoice(request,env);
       if(path==='/api/quickbooks/invoice'&&method==='POST')return handleQBOInvoice(request,env);
       if(path==='/api/quickbooks/connect'&&method==='GET')return handleQBOConnect(request,env);
@@ -728,11 +1308,22 @@ export default {
       if(path==='/functions/generate/stream'&&method==='POST')return handleStream(request,env);
       if(path==='/functions/generate'&&method==='POST')return handleGenerate(request,env);
       // ── Agent API routes (faster, specialized) ─────────────────────────
-      if(path==='/api/agent/route'&&method==='POST')return handleRoute(request,env);
-      if(path==='/api/agent/lead'&&method==='POST')return handleLeadParse(request,env);
-      if(path==='/api/agent/invoice'&&method==='POST')return handleInvoiceAgent(request,env);
-      if(path==='/api/agent/reply'&&method==='POST')return handleReplyWriter(request,env);
+      // V2 agents - profile-aware, no hardcoding
+      if(path==='/api/agent/route'&&method==='POST')return handleRouteV2(request,env);
+      if(path==='/api/agent/lead'&&method==='POST')return handleLeadParseV2(request,env);
+      if(path==='/api/agent/invoice'&&method==='POST')return handleInvoiceAgentV2(request,env);
+      if(path==='/api/agent/reply'&&method==='POST')return handleReplyWriterV2(request,env);
       if(path==='/api/agent/social'&&method==='POST')return handleSocialAgent(request,env);
+      // Profile & onboarding
+      if(path==='/api/profile'&&method==='GET')return handleGetProfile(request,env);
+      if(path==='/api/profile'&&method==='POST')return handleSaveProfile(request,env);
+      if(path==='/api/presets'&&method==='GET')return handleGetPresets(request,env);
+      if(path==='/api/onboarding/chat'&&method==='POST')return handleOnboardingChat(request,env);
+      // Lead inbox
+      if(path==='/api/leads/inbox'&&method==='GET')return handleGetLeadInbox(request,env);
+      if(path==='/api/leads/confirm'&&method==='POST')return handleConfirmLead(request,env);
+      // Automation
+      if(path==='/api/automation/log'&&method==='GET')return handleGetAutomationLog(request,env);
       return env.ASSETS.fetch(request);
     }catch(e){
       if(e instanceof Response)return e;
