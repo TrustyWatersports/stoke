@@ -1,0 +1,19 @@
+# Cloudflare Pages security headers
+# Applied to all routes
+
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(self), geolocation=()
+  X-XSS-Protection: 1; mode=block
+
+# Dashboard and app pages — stricter
+/dashboard.html
+  Cache-Control: no-store, no-cache, must-revalidate
+
+/calendar.html
+  Cache-Control: no-store, no-cache, must-revalidate
+
+/invoices.html
+  Cache-Control: no-store, no-cache, must-revalidate

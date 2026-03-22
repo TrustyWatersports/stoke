@@ -310,22 +310,248 @@ async function handleStripeInvoice(request,env){
   }catch(e){return err('Stripe API error: '+e.message);}
 }
 
-// ── AI GENERATION ─────────────────────────────────────────────────────────
+
+// ── MULTI-AGENT SYSTEM ────────────────────────────────────────────────────
+// Architecture: Router → Specialized Handler → Structured Output
+// Fast model for routing/extraction, full model only for drafting/generation
+//
+// Agents:
+//   router        — classify intent (fast, cheap, haiku-class)
+//   lead_parser   — extract structured data from messy text (fast)
+//   scheduler     — booking-focused reasoning (medium)
+//   invoice_agent — estimate/invoice line items (medium)
+//   reply_writer  — customer-facing message drafting (full model)
+//   social_agent  — content generation, captions, reels (full model)
+
+const FAST_MODEL  = 'claude-haiku-4-5-20251001'; // routing, extraction
+const FULL_MODEL  = 'claude-sonnet-4-20250514';  // drafting, generation
+
+async function callClaude(env, model, messages, systemPrompt, maxTokens=800){
+  const body = {
+    model,
+    max_tokens: maxTokens,
+    messages,
+    ...(systemPrompt ? {system: systemPrompt} : {})
+  };
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify(body)
+  });
+  const data = await resp.json();
+  return data.content?.[0]?.text?.trim() || '';
+}
+
+// ── ROUTER: classify intent cheaply and fast ──────────────────────────────
+async function handleRoute(request, env){
+  const b = await request.json();
+  const userText = b.text || b.message || '';
+  const context  = b.context || '';
+
+  const system = `You are a fast intent classifier for a small business operating platform called Stoke.
+Classify the user's message into exactly one intent. Respond ONLY with valid JSON, no other text.
+
+Intents:
+- lead_parse: extracting details from a customer inquiry, email, or message
+- book: scheduling, availability, booking, reservations
+- invoice: invoicing, quoting, estimating, payment
+- reply: drafting a reply, confirmation, or message to a customer
+- social: social media post, caption, reel, marketing content
+- query: asking about schedule, leads, stats, existing data
+- other: anything else
+
+{
+  "intent": "one of the above",
+  "confidence": 0.0-1.0,
+  "summary": "one sentence describing what the user wants",
+  "agent": "which specialized agent should handle this"
+}`;
+
+  const result = await callClaude(env, FAST_MODEL,
+    [{role:'user', content: `Business context: ${context}
+
+User message: ${userText}`}],
+    system, 200
+  );
+
+  try {
+    const parsed = JSON.parse(result.replace(/```json|```/g,'').trim());
+    return json({ok: true, ...parsed, raw: result});
+  } catch(e) {
+    return json({ok: true, intent: 'other', confidence: 0.5, summary: userText, agent: 'social_agent'});
+  }
+}
+
+// ── LEAD PARSER: extract structured booking data from messy text ──────────
+async function handleLeadParse(request, env){
+  const b = await request.json();
+  const text = b.text || b.message || '';
+  const settings = b.settings || {};
+
+  const system = `You are a lead extraction specialist for ${settings.businessName || 'a small outdoor business'}.
+Extract booking/inquiry details from the provided text. Respond ONLY with valid JSON:
+
+{
+  "customerName": "full name or null",
+  "customerEmail": "email or null", 
+  "customerPhone": "phone or null",
+  "serviceType": "rental|rigging|lesson|sailboat|repair|other",
+  "preferredDate": "ISO date or null",
+  "preferredTime": "time string or null",
+  "duration": "estimated duration in hours or null",
+  "partySize": "number or null",
+  "amount": "estimated dollar amount or null",
+  "notes": "any other relevant details",
+  "urgency": "high|medium|low",
+  "confidence": 0.0-1.0,
+  "summary": "one sentence summary of the inquiry"
+}
+
+Pricing guidance: rentals $45/hr, lessons $65/person, rigging quotes vary, sailboat lessons $85/hr.`;
+
+  const result = await callClaude(env, FAST_MODEL,
+    [{role:'user', content: text}],
+    system, 500
+  );
+
+  try {
+    const parsed = JSON.parse(result.replace(/```json|```/g,'').trim());
+    return json({ok: true, lead: parsed});
+  } catch(e) {
+    return json({ok: false, error: 'Could not parse lead', raw: result});
+  }
+}
+
+// ── INVOICE AGENT: generate line items from job context ───────────────────
+async function handleInvoiceAgent(request, env){
+  const b = await request.json();
+  const jobContext = b.jobContext || '';
+  const serviceType = b.serviceType || 'service';
+  const settings = b.settings || {};
+
+  const system = `You are a billing specialist for ${settings.businessName || 'Trusty Sail & Paddle'}, an outdoor business.
+Generate professional invoice line items from the job description. Respond ONLY with valid JSON:
+
+{
+  "lineItems": [
+    {"desc": "description of work or item", "qty": 1, "price": 0.00}
+  ],
+  "notes": "thank you message and payment terms",
+  "totalEstimate": 0.00,
+  "serviceType": "rigging|rental|lesson|repair|sailboat|other"
+}
+
+Pricing guide:
+- Rigging labor: $95/hr
+- Rod holders: $27 each installed
+- Fish finder mount: $35
+- Motor mount: $45  
+- Hardware/misc: cost + 20%
+- Kayak rental: $45/hr or $120/day
+- Lesson: $65/person
+- Sailboat lesson: $85/hr
+- Always break labor and parts into separate line items.`;
+
+  const result = await callClaude(env, FAST_MODEL,
+    [{role:'user', content: `Service type: ${serviceType}
+
+Job description: ${jobContext}`}],
+    system, 600
+  );
+
+  try {
+    const parsed = JSON.parse(result.replace(/```json|```/g,'').trim());
+    return json({ok: true, ...parsed});
+  } catch(e) {
+    return json({ok: false, error: 'Could not generate invoice', raw: result});
+  }
+}
+
+// ── REPLY WRITER: draft customer-facing messages ──────────────────────────
+async function handleReplyWriter(request, env){
+  const b = await request.json();
+  const context = b.context || '';
+  const tone = b.tone || 'warm and professional';
+  const replyType = b.replyType || 'confirmation'; // confirmation|follow-up|reminder|decline
+  const settings = b.settings || {};
+
+  const system = `You are writing on behalf of ${settings.businessName || 'Trusty Sail & Paddle'} on the Crystal Coast.
+Write a ${replyType} message in a ${tone} tone. Keep it concise — 3-5 sentences max.
+Do not use excessive exclamation points. Sound like a real person, not a bot.
+Return ONLY the message text, no subject line or metadata.`;
+
+  const result = await callClaude(env, FULL_MODEL,
+    [{role:'user', content: context}],
+    system, 400
+  );
+
+  return json({ok: true, message: result});
+}
+
+// ── SOCIAL AGENT: content generation with voice awareness ─────────────────
+async function handleSocialAgent(request, env){
+  if(!env.ANTHROPIC_API_KEY) return err('MISSING_API_KEY', 500);
+  const b = await request.json();
+
+  // Pass through to stream or generate — social needs full model + full context
+  // This is the only agent that uses MAX_TOKENS (6000) for long-form content
+  const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify({
+      model: FULL_MODEL,
+      max_tokens: MAX_TOKENS,
+      messages: b.messages,
+      ...(b.system ? {system: b.system} : {})
+    })
+  });
+  const data = await upstream.json();
+  return new Response(JSON.stringify(data), {
+    status: upstream.status,
+    headers: {'Content-Type':'application/json',...CORS}
+  });
+}
+
+// ── STREAM SOCIAL: streaming version for live content generation ──────────
+async function handleStreamSocial(request, env){
+  if(!env.ANTHROPIC_API_KEY) return err('MISSING_API_KEY', 500);
+  const b = await request.json();
+
+  const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify({
+      model: FULL_MODEL,
+      max_tokens: MAX_TOKENS,
+      stream: true,
+      messages: b.messages,
+      ...(b.system ? {system: b.system} : {})
+    })
+  });
+
+  if(!upstream.ok){ const t = await upstream.text(); return err(`Anthropic error: ${t}`, upstream.status); }
+  return new Response(upstream.body, {headers:{'Content-Type':'text/event-stream','Cache-Control':'no-cache',...CORS}});
+}
+
+
+// ── LEGACY AI GENERATION (kept for backward compat) ───────────────────────
 async function handleStream(request,env){
-  if(!env.ANTHROPIC_API_KEY)return err('MISSING_API_KEY',500);
-  let body;try{body=await request.json();}catch(e){return err('Invalid request body');}
-  if(!Array.isArray(body?.messages))return err('messages array required');
-  const upstream=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':env.ANTHROPIC_API_KEY,'anthropic-version':'2023-06-01'},body:JSON.stringify({model:MODEL,max_tokens:MAX_TOKENS,stream:true,messages:body.messages})});
-  if(!upstream.ok){const t=await upstream.text();return err(`Anthropic error: ${t}`,upstream.status);}
-  return new Response(upstream.body,{headers:{'Content-Type':'text/event-stream','Cache-Control':'no-cache',...CORS}});
+  return handleStreamSocial(request,env);
 }
 async function handleGenerate(request,env){
-  if(!env.ANTHROPIC_API_KEY)return err('MISSING_API_KEY',500);
-  let body;try{body=await request.json();}catch(e){return err('Invalid request body');}
-  if(!Array.isArray(body?.messages))return err('messages array required');
-  const upstream=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':env.ANTHROPIC_API_KEY,'anthropic-version':'2023-06-01'},body:JSON.stringify({model:MODEL,max_tokens:MAX_TOKENS,messages:body.messages})});
-  const data=await upstream.json();
-  return new Response(JSON.stringify(data),{status:upstream.status,headers:{'Content-Type':'application/json',...CORS}});
+  return handleSocialAgent(request,env);
 }
 
 // ── CRON — scheduled publishing ───────────────────────────────────────────
@@ -367,6 +593,12 @@ export default {
       if(path==='/api/stripe/invoice'&&method==='POST')return handleStripeInvoice(request,env);
       if(path==='/functions/generate/stream'&&method==='POST')return handleStream(request,env);
       if(path==='/functions/generate'&&method==='POST')return handleGenerate(request,env);
+      // ── Agent API routes (faster, specialized) ─────────────────────────
+      if(path==='/api/agent/route'&&method==='POST')return handleRoute(request,env);
+      if(path==='/api/agent/lead'&&method==='POST')return handleLeadParse(request,env);
+      if(path==='/api/agent/invoice'&&method==='POST')return handleInvoiceAgent(request,env);
+      if(path==='/api/agent/reply'&&method==='POST')return handleReplyWriter(request,env);
+      if(path==='/api/agent/social'&&method==='POST')return handleSocialAgent(request,env);
       return env.ASSETS.fetch(request);
     }catch(e){
       if(e instanceof Response)return e;

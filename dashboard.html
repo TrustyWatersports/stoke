@@ -448,7 +448,31 @@
 
 </style>
 </head>
-<body>
+<body><script>
+// Auth guard — redirect to login if no session
+(function(){
+  const hasCookie = document.cookie.includes('stoke_session=');
+  const hasLocal = localStorage.getItem('stoke_authed') === 'true';
+  if (!hasCookie && !hasLocal) {
+    // Give the server a moment to set cookie after demo login
+    // then redirect to login if truly unauthenticated
+    setTimeout(() => {
+      fetch('/auth/me', {credentials:'include'})
+        .then(r => r.json())
+        .then(data => {
+          if (!data.authenticated) {
+            window.location.href = '/login.html?redirect=dashboard.html';
+          } else {
+            localStorage.setItem('stoke_authed', 'true');
+          }
+        })
+        .catch(() => {
+          // Offline or error — allow access in dev
+        });
+    }, 200);
+  }
+})();
+</script>
 <div class="app app-wide">
 
   <!-- Header -->

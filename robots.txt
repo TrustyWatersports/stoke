@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+Allow: /index.html
+
+# Keep app pages out of search results
+Disallow: /dashboard.html
+Disallow: /calendar.html
+Disallow: /invoices.html
+Disallow: /schedule.html
+Disallow: /reel-maker.html
+Disallow: /settings.html
+Disallow: /voice-wizard.html
+Disallow: /app.html
+Disallow: /auth/
+
+Sitemap: https://withstoke.com/sitemap.xml

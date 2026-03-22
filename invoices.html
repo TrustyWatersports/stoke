@@ -562,14 +562,15 @@ PRICING GUIDE:
 
 Use the most recent rigging/repair job if present. Break out labor and parts separately.`;
 
-    const resp = await fetch('/functions/generate', {
+    const resp = await fetch('/api/agent/invoice', {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ messages: [{ role:'user', content:[{type:'text',text:prompt}] }] })
+      credentials: 'include',
+      body: JSON.stringify({jobContext: events.slice(0,3).map(e=>JSON.stringify({title:e.title,type:e.type,customer:e.customerName,notes:e.notes,amount:e.amount})).join(' | '), serviceType: document.getElementById('inv-service-type')?.value||'service', settings: (JSON.parse(localStorage.getItem('stoke_settings')||'{}')).business||{}})
     });
     const data = await resp.json();
     const raw = data.content?.[0]?.text?.trim() || '';
-    const parsed = JSON.parse(raw.replace(/```json|```/g,'').trim());
-    prefillFromData(parsed);
+    const parsed = data; // agent returns structured JSON directly
+    if(parsed.lineItems) prefillFromData(parsed);
     showToast('✦ AI filled in the invoice from your last job');
   } catch(e) {
     showToast('Could not generate — fill in manually');
