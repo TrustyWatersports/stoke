@@ -10,3 +10,9 @@ database_id   = "f5fbf67f-c694-4e40-bb84-402f5bba1c24"
 [[r2_buckets]]
 binding    = "PHOTOS"
 bucket_name = "stoke-photos"
+
+# Set these as secrets in Cloudflare Pages dashboard:
+# SENDGRID_API_KEY = "SG.xxx"
+# FROM_EMAIL = "hello@withstoke.com"
+# APP_DOMAIN = "withstoke.com"
+# DEMO_SECRET = "trustysail2026"

@@ -23,18 +23,148 @@ async function requireAuth(request,env){
   return s;
 }
 
-async function sendMagicLink(email,tok,env){
-  const domain=env.APP_DOMAIN||'stoke-1jn.pages.dev';
-  const link=`https://${domain}/auth/verify?token=${tok}`;
-  if(env.SENDGRID_API_KEY){
-    const resp=await fetch('https://api.sendgrid.com/v3/mail/send',{method:'POST',headers:{'Authorization':`Bearer ${env.SENDGRID_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({personalizations:[{to:[{email}]}],from:{email:env.FROM_EMAIL||'hello@withstoke.com',name:'Stoke'},subject:'Your Stoke login link',content:[{type:'text/html',value:`<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:40px 20px"><div style="font-size:24px;font-weight:600;margin-bottom:24px">✦ Stoke</div><p style="font-size:16px;margin-bottom:32px">Click below to sign in. This link expires in 15 minutes.</p><a href="${link}" style="display:inline-block;background:#1a6b4a;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-size:15px;font-weight:500">Sign in to Stoke</a></div>`}]})});
-    if(!resp.ok)throw new Error(`SendGrid ${resp.status}`);
-  } else {
-    console.log(`[Stoke Auth] Magic link for ${email}: ${link}`);
-  }
+// -- EMAIL TEMPLATES ----------------------------------------------------------
+function emailBase(body, preheader){
+  return '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Stoke</title></head>'
+  +'<body style="margin:0;padding:0;background:#f2f2ef;font-family:Helvetica,Arial,sans-serif">'
+  +(preheader?'<div style="display:none;max-height:0;overflow:hidden">'+preheader+'</div>':'')
+  +'<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 16px">'
+  +'<table width="100%" style="max-width:520px" cellpadding="0" cellspacing="0">'
+  +'<tr><td style="background:#1a6b4a;border-radius:12px 12px 0 0;padding:28px 40px">'
+  +'<table cellpadding="0" cellspacing="0"><tr>'
+  +'<td style="width:32px;height:32px;background:rgba(255,255,255,0.15);border-radius:7px;text-align:center;vertical-align:middle;font-size:16px;color:white">&#9670;</td>'
+  +'<td style="padding-left:10px;font-family:Georgia,serif;font-size:21px;color:white">Stoke</td>'
+  +'</tr></table></td></tr>'
+  +'<tr><td style="background:#ffffff;padding:40px;border-radius:0 0 12px 12px">'
+  +body
+  +'<p style="margin:28px 0 0;font-size:12px;color:#aaa;border-top:1px solid #f0f0ec;padding-top:20px">'
+  +'Sent by Stoke &middot; <a href="https://withstoke.com" style="color:#1a6b4a;text-decoration:none">withstoke.com</a><br>'
+  +"If you didn't request this, you can safely ignore it."
+  +'</p></td></tr>'
+  +'</table></td></tr></table></body></html>';
 }
 
-// ── AUTH ──────────────────────────────────────────────────────────────────
+function magicLinkEmail(link, name){
+  const greeting = name ? 'Hi '+name.split(' ')[0]+',' : 'Hi there,';
+  return emailBase(
+    '<h1 style="font-family:Georgia,serif;font-size:26px;color:#1a1a18;margin:0 0 8px;letter-spacing:-0.5px">Your sign-in link</h1>'
+    +'<p style="font-size:15px;color:#666;margin:0 0 28px;line-height:1.6">'+greeting+' click the button below to sign in to Stoke. This link expires in <strong>15 minutes</strong> and can only be used once.</p>'
+    +'<table cellpadding="0" cellspacing="0" style="margin-bottom:28px"><tr>'
+    +'<td style="background:#1a6b4a;border-radius:8px">'
+    +'<a href="'+link+'" style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:600;color:white;text-decoration:none">Sign in to Stoke &rarr;</a>'
+    +'</td></tr></table>'
+    +'<p style="font-size:13px;color:#999;margin:0;line-height:1.6">Or copy this link:<br>'
+    +'<span style="color:#1a6b4a;word-break:break-all">'+link+'</span></p>',
+    'Your Stoke sign-in link'
+  );
+}
+
+function bookingConfirmEmail(customerName, businessName, serviceType, dateStr, phone){
+  return emailBase(
+    '<h1 style="font-family:Georgia,serif;font-size:26px;color:#1a1a18;margin:0 0 8px">Booking confirmed!</h1>'
+    +'<p style="font-size:15px;color:#666;margin:0 0 20px;line-height:1.6">Hi '+customerName+', here are your details:</p>'
+    +'<table width="100%" cellpadding="0" cellspacing="0" style="background:#f8f8f6;border-radius:8px;margin-bottom:24px">'
+    +'<tr><td style="padding:20px 24px">'
+    +'<table width="100%" cellpadding="0" cellspacing="0">'
+    +'<tr><td style="padding:5px 0;font-size:12px;color:#999;font-weight:600;text-transform:uppercase;letter-spacing:.06em">Service</td>'
+    +'<td style="padding:5px 0;font-size:14px;color:#1a1a18;text-align:right">'+serviceType+'</td></tr>'
+    +'<tr><td style="padding:5px 0;font-size:12px;color:#999;font-weight:600;text-transform:uppercase;letter-spacing:.06em">Date &amp; Time</td>'
+    +'<td style="padding:5px 0;font-size:14px;color:#1a1a18;text-align:right">'+dateStr+'</td></tr>'
+    +'<tr><td style="padding:5px 0;font-size:12px;color:#999;font-weight:600;text-transform:uppercase;letter-spacing:.06em">With</td>'
+    +'<td style="padding:5px 0;font-size:14px;color:#1a1a18;text-align:right">'+businessName+'</td></tr>'
+    +'</table></td></tr></table>'
+    +'<p style="font-size:14px;color:#666;margin:0;line-height:1.6">Questions? Call or text us at <strong>'+phone+'</strong>. See you on the water.</p>',
+    'Your '+serviceType+' is confirmed'
+  );
+}
+
+function invoiceEmail(customerName, businessName, amount, paymentLink, dueDate){
+  return emailBase(
+    '<h1 style="font-family:Georgia,serif;font-size:26px;color:#1a1a18;margin:0 0 8px">Invoice from '+businessName+'</h1>'
+    +'<p style="font-size:15px;color:#666;margin:0 0 20px;line-height:1.6">Hi '+customerName+', your invoice is ready.</p>'
+    +'<table width="100%" cellpadding="0" cellspacing="0" style="background:#f8f8f6;border-radius:8px;margin-bottom:24px">'
+    +'<tr><td style="padding:20px 24px">'
+    +'<table width="100%" cellpadding="0" cellspacing="0">'
+    +'<tr><td style="padding:5px 0;font-size:12px;color:#999;font-weight:600;text-transform:uppercase;letter-spacing:.06em">Amount Due</td>'
+    +'<td style="padding:5px 0;font-family:Georgia,serif;font-size:22px;color:#1a6b4a;text-align:right">$'+amount+'</td></tr>'
+    +'<tr><td style="padding:5px 0;font-size:12px;color:#999;font-weight:600;text-transform:uppercase;letter-spacing:.06em">Due Date</td>'
+    +'<td style="padding:5px 0;font-size:14px;color:#1a1a18;text-align:right">'+dueDate+'</td></tr>'
+    +'</table></td></tr></table>'
+    +'<table cellpadding="0" cellspacing="0" style="margin-bottom:20px"><tr>'
+    +'<td style="background:#1a6b4a;border-radius:8px">'
+    +'<a href="'+paymentLink+'" style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:600;color:white;text-decoration:none">Pay Now &rarr;</a>'
+    +'</td></tr></table>'
+    +'<p style="font-size:13px;color:#999">Thank you for your business!</p>',
+    'Invoice from '+businessName+' - $'+amount+' due'
+  );
+}
+
+async function sendEmail(env, to, subject, htmlBody){
+  const fromEmail = env.FROM_EMAIL || 'hello@withstoke.com';
+  if(!env.SENDGRID_API_KEY){
+    console.log('[Stoke Email] No SENDGRID_API_KEY - skipping send to '+to);
+    return {ok:true, dev:true};
+  }
+  const resp = await fetch('https://api.sendgrid.com/v3/mail/send',{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+env.SENDGRID_API_KEY,'Content-Type':'application/json'},
+    body:JSON.stringify({
+      personalizations:[{to:[{email:to}]}],
+      from:{email:fromEmail, name:'Stoke'},
+      subject,
+      content:[{type:'text/html', value:htmlBody}]
+    })
+  });
+  if(!resp.ok){ const b=await resp.text(); throw new Error('SendGrid '+resp.status+': '+b); }
+  return {ok:true};
+}
+
+async function sendMagicLink(email, tok, env){
+  const domain = env.APP_DOMAIN || 'withstoke.com';
+  const link = 'https://'+domain+'/auth/verify?token='+tok;
+  let name = '';
+  try { const u = await env.DB.prepare('SELECT name FROM users WHERE email=?').bind(email).first(); name = u?.name||''; } catch(e){}
+  await sendEmail(env, email, 'Sign in to Stoke', magicLinkEmail(link, name));
+}
+
+// -- EMAIL API ENDPOINTS ------------------------------------------------------
+async function handleSendConfirmation(request, env){
+  const s = await requireAuth(request, env);
+  const b = await request.json();
+  if(!b.customerEmail) return err('customerEmail required');
+  const biz = await env.DB.prepare('SELECT * FROM businesses WHERE id=?').bind(s.business_id).first().catch(()=>null);
+  const html = bookingConfirmEmail(
+    b.customerName || 'there',
+    biz?.name || 'Trusty Sail & Paddle',
+    b.serviceType || 'your booking',
+    b.dateStr || '',
+    biz?.phone || ''
+  );
+  try {
+    await sendEmail(env, b.customerEmail, 'Your booking is confirmed - '+( biz?.name||'Stoke'), html);
+    return json({ok:true});
+  } catch(e) { return err('Email failed: '+e.message); }
+}
+
+async function handleSendInvoiceEmail(request, env){
+  const s = await requireAuth(request, env);
+  const b = await request.json();
+  if(!b.customerEmail || !b.amount || !b.paymentLink) return err('customerEmail, amount, paymentLink required');
+  const biz = await env.DB.prepare('SELECT * FROM businesses WHERE id=?').bind(s.business_id).first().catch(()=>null);
+  const html = invoiceEmail(
+    b.customerName || 'there',
+    biz?.name || 'Trusty Sail & Paddle',
+    parseFloat(b.amount).toFixed(2),
+    b.paymentLink,
+    b.dueDate || 'Due in 30 days'
+  );
+  try {
+    await sendEmail(env, b.customerEmail, 'Invoice from '+(biz?.name||'Stoke')+' - $'+parseFloat(b.amount).toFixed(2), html);
+    return json({ok:true});
+  } catch(e) { return err('Email failed: '+e.message); }
+}
+
+
 async function handleLogin(request,env){
   const {email}=await request.json().catch(()=>({}));
   if(!email||!email.includes('@'))return err('Valid email required');
@@ -585,6 +715,8 @@ export default {
       if(path==='/api/events'&&method==='GET')return handleListEvents(request,env);
       if(path==='/api/events'&&method==='POST')return handleSaveEvent(request,env);
       if(path==='/api/leads/parse'&&method==='POST')return handleParseLead(request,env);
+      if(path==='/api/email/confirmation'&&method==='POST')return handleSendConfirmation(request,env);
+      if(path==='/api/email/invoice'&&method==='POST')return handleSendInvoiceEmail(request,env);
       if(path==='/api/invoices'&&method==='GET')return handleListInvoices(request,env);
       if(path==='/api/invoices'&&method==='POST')return handleSaveInvoice(request,env);
       if(path==='/api/quickbooks/invoice'&&method==='POST')return handleQBOInvoice(request,env);
