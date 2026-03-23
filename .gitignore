@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+.npm/
+
+# Wrangler
+.wrangler/
+.dev.vars
+
+# Environment / secrets - NEVER commit these
+.env
+.env.*
+*.env
+secrets.json
+credentials.json
+
+# Build artifacts
+dist/
+build/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Editor
+.vscode/
+.idea/
+*.swp
