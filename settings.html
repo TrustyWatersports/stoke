@@ -257,6 +257,31 @@ Never: emoji, corporate language, leading with product or price, aggressive CTAs
   <!-- TAB 4 — CHANNELS -->
   <div class="tab-panel" id="tab-channels">
     <div class="settings-section">
+      <div class="settings-section-title">Inbox connections</div>
+      <div class="settings-section-desc">Connect your email inbox so Stoke can automatically read inquiries and turn them into leads.</div>
+    </div>
+
+    <!-- GMAIL -->
+    <div class="channel-card" id="gmail-card" style="flex-direction:column;align-items:stretch;gap:0">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="channel-dot" style="background:#EA4335"></div>
+        <div class="channel-info">
+          <div class="channel-name">Gmail</div>
+          <div class="channel-status" id="gmail-status-text">Checking connection...</div>
+        </div>
+        <div id="gmail-btn-area">
+          <a href="/api/gmail/connect" class="connect-btn" id="gmail-connect-btn" style="display:none;text-decoration:none">Connect</a>
+          <button class="connect-btn" id="gmail-sync-btn" style="display:none" onclick="syncGmail(this)">Sync now</button>
+        </div>
+      </div>
+      <div id="gmail-connected-detail" style="display:none;margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+        <div id="gmail-connected-email" style="font-size:11px;color:var(--text-3)"></div>
+        <button onclick="disconnectGmail()" style="font-size:11px;color:#c0392b;background:none;border:none;cursor:pointer">Disconnect</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="settings-section">
       <div class="settings-section-title">Publishing connections</div>
       <div class="settings-section-desc">Connect your social accounts to publish directly from Stoke. You approve everything before it goes live.</div>
     </div>
@@ -424,6 +449,75 @@ async function initLoad() {
 
 document.addEventListener('input', e => { if(e.target.closest('.app')) markUnsaved(); });
 initLoad();
+
+// ── GMAIL CONNECTION ──────────────────────────────────────────
+(async function checkGmailStatus(){
+  const statusText  = document.getElementById('gmail-status-text');
+  const connectBtn  = document.getElementById('gmail-connect-btn');
+  const syncBtn     = document.getElementById('gmail-sync-btn');
+  const detailDiv   = document.getElementById('gmail-connected-detail');
+  const emailDiv    = document.getElementById('gmail-connected-email');
+
+  // Check URL params first
+  const params = new URLSearchParams(location.search);
+  if(params.get('gmail') === 'connected'){
+    showToast('Gmail connected! Stoke is now watching your inbox.', 'success');
+    history.replaceState({}, '', location.pathname);
+  } else if(params.get('gmail') === 'denied'){
+    showToast('Gmail access was denied.', 'error');
+    history.replaceState({}, '', location.pathname);
+  } else if(params.get('gmail') === 'error'){
+    showToast('Something went wrong connecting Gmail. Please try again.', 'error');
+    history.replaceState({}, '', location.pathname);
+  }
+
+  try {
+    const resp = await fetch('/api/gmail/status', { credentials: 'include' });
+    const data = await resp.json();
+    if(data.connected){
+      if(statusText) statusText.textContent = 'Connected — watching inbox';
+      if(syncBtn){ syncBtn.style.display = ''; }
+      if(detailDiv){ detailDiv.style.display = 'flex'; }
+      if(emailDiv)  emailDiv.textContent = data.email || '';
+    } else {
+      if(statusText) statusText.textContent = 'Not connected — click to monitor inbox automatically';
+      if(connectBtn) connectBtn.style.display = '';
+    }
+  } catch(e) {
+    if(statusText) statusText.textContent = 'Not connected';
+    if(connectBtn) connectBtn.style.display = '';
+  }
+})();
+
+async function syncGmail(btn){
+  const orig = btn.textContent;
+  btn.textContent = 'Syncing...';
+  btn.disabled = true;
+  try {
+    const resp = await fetch('/api/gmail/sync', { method:'POST', credentials:'include' });
+    const data = await resp.json();
+    const msg = data.processed > 0
+      ? data.processed + ' new lead' + (data.processed !== 1 ? 's' : '') + ' found!'
+      : 'Inbox is up to date.';
+    showToast(msg, 'success');
+  } catch(e) { showToast('Sync failed. Please try again.', 'error'); }
+  btn.textContent = orig;
+  btn.disabled = false;
+}
+
+async function disconnectGmail(){
+  if(!confirm('Disconnect Gmail? Stoke will stop monitoring your inbox.')) return;
+  await fetch('/api/gmail/disconnect', { method:'POST', credentials:'include' });
+  location.reload();
+}
+
+function showToast(msg, type){
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);padding:12px 20px;border-radius:8px;font-size:13px;font-weight:500;z-index:9999;color:white;box-shadow:0 4px 20px rgba(0,0,0,0.15);background:' + (type==='success' ? '#1a6b4a' : '#c0392b');
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+}
 </script>
 <script src="js/voice.js"></script>
 </body>
