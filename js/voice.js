@@ -22,6 +22,8 @@ let commandCard = null;
 let pendingAction = null;
 let ttsUtterance = null;
 let wakeEnabled = true;
+let micPermission = 'unknown'; // 'granted' | 'denied' | 'unknown'
+let isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
 // ── INJECT STYLES ─────────────────────────────────────────────
 const style = document.createElement('style');
@@ -274,9 +276,26 @@ function setupRecognition() {
 
   recognition.onerror = (e) => {
     console.warn('[Stoke Voice] Error:', e.error);
-    if (e.error !== 'no-speech' && e.error !== 'aborted') {
-      showError('Could not hear that. Please try again.');
+    if (e.error === 'not-allowed' || e.error === 'permission-denied') {
+      // User denied mic - mark it, disable wake word, NEVER ask again automatically
+      micPermission = 'denied';
+      wakeEnabled = false;
+      stopListening();
+      stopWakeWord();
+      // Hide the mic button so it doesn't taunt them
+      const btn = document.getElementById('stoke-voice-btn');
+      const hdr = document.getElementById('stoke-voice-header-btn');
+      if (btn) btn.style.display = 'none';
+      if (hdr) hdr.style.display = 'none';
+      return;
     }
+    if (e.error === 'no-speech' || e.error === 'aborted') {
+      // Silent failures - just stop, don't show error
+      stopListening();
+      return;
+    }
+    // Other errors - show once, don't loop
+    showError('Could not hear that. Please try again.');
     stopListening();
   };
 
@@ -316,24 +335,39 @@ function setupWakeWord() {
     }
   };
 
-  wakeRecognition.onerror = () => {};
+  wakeRecognition.onerror = (e) => {
+    if (e.error === 'not-allowed' || e.error === 'permission-denied') {
+      micPermission = 'denied';
+      wakeEnabled = false;
+      stopWakeWord();
+    }
+    wakeListening = false;
+  };
   wakeRecognition.onend = () => {
     wakeListening = false;
-    // Restart if not in active listening mode
-    if (!recognizing && wakeEnabled) {
-      setTimeout(startWakeWord, 500);
+    // Only restart on desktop, only if permitted, only if enabled
+    if (!recognizing && wakeEnabled && !isMobile && micPermission !== 'denied') {
+      setTimeout(startWakeWord, 1000);
     }
   };
 }
 
 function startWakeWord() {
+  // Never auto-start wake word on mobile - it holds the mic open constantly
+  // and shows the orange indicator in iPhone's Dynamic Island / status bar
+  // On mobile, users tap the button intentionally
   if (!wakeRecognition || recognizing || wakeListening) return;
+  if (isMobile) return;
+  if (micPermission === 'denied') return;
+  if (!wakeEnabled) return;
   try {
     wakeRecognition.start();
     wakeListening = true;
     const ind = document.getElementById('stoke-wake-indicator');
     if (ind) ind.classList.add('visible');
-  } catch(e) {}
+  } catch(e) {
+    wakeListening = false;
+  }
 }
 
 function stopWakeWord() {
@@ -439,17 +473,108 @@ function showError(message) {
 }
 
 // ── TEXT TO SPEECH ─────────────────────────────────────────────
+// Voice preference order - most natural sounding first
+// iOS: Samantha (enhanced) > Siri voices > Samantha (default)
+// macOS: Samantha > Alex > Karen > Moira
+// Android: Google US English > en-US local service
+// Windows: Aria > Jenny > Zira > David
+const VOICE_PREFS = [
+  // iOS / macOS premium voices
+  'Samantha (Enhanced)',
+  'Siri Female',
+  'Siri Voice 2',
+  'Karen (Enhanced)',
+  'Moira (Enhanced)',
+  // macOS standard
+  'Samantha',
+  'Alex',
+  'Karen',
+  'Moira',
+  // Windows natural voices (Edge/Chromium)
+  'Microsoft Aria Online (Natural)',
+  'Microsoft Jenny Online (Natural)',
+  'Microsoft Aria',
+  'Microsoft Jenny',
+  // Google (Android/Chrome)
+  'Google US English',
+  'Google UK English Female',
+  // Windows legacy
+  'Microsoft Zira Desktop',
+];
+
+let _bestVoice = null;
+let _voicesLoaded = false;
+
+function loadBestVoice() {
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices.length) return null;
+
+  // Try preference list first
+  for (const pref of VOICE_PREFS) {
+    const v = voices.find(v => v.name === pref);
+    if (v) return v;
+  }
+
+  // Fallback: best en-US local voice
+  const local = voices.find(v => v.lang === 'en-US' && v.localService);
+  if (local) return local;
+
+  // Last resort: any en-US voice
+  const anyUS = voices.find(v => v.lang === 'en-US' || v.lang === 'en_US');
+  if (anyUS) return anyUS;
+
+  return voices[0] || null;
+}
+
+// Pre-load voices as soon as they're available
+if (window.speechSynthesis) {
+  // Chrome loads voices async
+  if (window.speechSynthesis.onvoiceschanged !== undefined) {
+    window.speechSynthesis.onvoiceschanged = () => {
+      if (!_voicesLoaded) {
+        _bestVoice = loadBestVoice();
+        _voicesLoaded = true;
+        console.log('[Stoke Voice] TTS voice:', _bestVoice?.name || 'default');
+      }
+    };
+  }
+  // Safari/Firefox load voices sync
+  setTimeout(() => {
+    if (!_voicesLoaded) {
+      _bestVoice = loadBestVoice();
+      _voicesLoaded = true;
+      console.log('[Stoke Voice] TTS voice:', _bestVoice?.name || 'default');
+    }
+  }, 500);
+}
+
 function speak(text) {
   if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
+
   const utt = new SpeechSynthesisUtterance(text);
-  utt.rate = 1.05;
-  utt.pitch = 1;
-  utt.volume = 0.85;
-  // Prefer a natural voice
-  const voices = window.speechSynthesis.getVoices();
-  const preferred = voices.find(v => v.name.includes('Samantha') || v.name.includes('Karen') || v.name.includes('Moira') || (v.lang === 'en-US' && v.localService));
-  if (preferred) utt.voice = preferred;
+
+  // Natural speech parameters - less robotic
+  utt.rate  = 0.95;   // Slightly slower = more natural (was 1.05)
+  utt.pitch = 1.0;    // Neutral pitch
+  utt.volume = 0.9;
+
+  // Assign best available voice
+  const voice = _bestVoice || loadBestVoice();
+  if (voice) utt.voice = voice;
+
+  // iOS fix: speechSynthesis sometimes stops mid-sentence
+  // Keep it alive with a periodic check
+  let resumeTimer;
+  utt.onstart = () => {
+    resumeTimer = setInterval(() => {
+      if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+    }, 250);
+  };
+  utt.onend = utt.onerror = () => {
+    clearInterval(resumeTimer);
+  };
+
   window.speechSynthesis.speak(utt);
 }
 
@@ -727,11 +852,51 @@ function navigateToAction(intent, action) {
 // ── INIT ──────────────────────────────────────────────────────
 function init() {
   injectUI();
-  if (setupRecognition()) {
-    setupWakeWord();
-    // Start wake word after a short delay
-    setTimeout(startWakeWord, 2000);
-    console.log('[Stoke Voice] Ready. Say "Hey Stoke" or tap the mic button.');
+
+  // Check mic permission state before doing anything
+  if (navigator.permissions) {
+    navigator.permissions.query({ name: 'microphone' }).then(result => {
+      micPermission = result.state; // 'granted' | 'denied' | 'prompt'
+      result.onchange = () => {
+        micPermission = result.state;
+        if (result.state === 'denied') {
+          wakeEnabled = false;
+          stopWakeWord();
+        }
+      };
+
+      if (result.state === 'denied') {
+        // Already denied - hide mic button, don't ask
+        wakeEnabled = false;
+        const btn = document.getElementById('stoke-voice-btn');
+        const hdr = document.getElementById('stoke-voice-header-btn');
+        if (btn) btn.title = 'Microphone access denied';
+        if (hdr) hdr.title = 'Microphone access denied';
+        return;
+      }
+
+      if (setupRecognition()) {
+        setupWakeWord();
+        // Only start wake word on desktop with granted permission
+        if (!isMobile) {
+          setTimeout(startWakeWord, 2000);
+        }
+        console.log('[Stoke Voice] Ready.' + (isMobile ? ' Tap mic to talk.' : ' Say "Hey Stoke" or tap the mic.'));
+      }
+    }).catch(() => {
+      // Permissions API not available - set up normally but be cautious
+      if (setupRecognition()) {
+        setupWakeWord();
+        if (!isMobile) setTimeout(startWakeWord, 2000);
+      }
+    });
+  } else {
+    // No Permissions API (older browsers)
+    if (setupRecognition()) {
+      setupWakeWord();
+      if (!isMobile) setTimeout(startWakeWord, 2000);
+      console.log('[Stoke Voice] Ready.');
+    }
   }
 
   // Check for prefill actions from other pages

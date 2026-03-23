@@ -135,6 +135,145 @@
 .modal-delete-btn:hover { border-color:#c0392b; color:#c0392b; }
 .modal-cancel-btn { padding:10px 16px; background:none; border:0.5px solid var(--border); border-radius:var(--radius); color:var(--text-2); font-family:var(--font-body); font-size:13px; cursor:pointer; }
 .ai-draft-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 8px; background:rgba(26,107,74,0.1); color:var(--green); border-radius:20px; font-size:10px; font-weight:600; margin-left:8px; }
+
+/* ── CALENDAR MOBILE FIXES ─────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Shell: stack sidebar above calendar body */
+  .cal-shell {
+    flex-direction: column !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Sidebar becomes a horizontal strip */
+  .cal-sidebar {
+    width: 100% !important;
+    min-width: unset !important;
+    max-width: unset !important;
+    border-right: none !important;
+    border-bottom: 0.5px solid var(--border) !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    padding: 12px !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  /* Mini calendar in sidebar takes less space on mobile */
+  .cal-sidebar .mini-cal {
+    min-width: 200px !important;
+    flex: 1 !important;
+  }
+
+  /* Service type filters become scrollable chips */
+  .cal-sidebar .service-filters {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+    flex: 2 !important;
+  }
+
+  /* Calendar body fills full width */
+  .cal-body {
+    width: 100% !important;
+    min-width: unset !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* Week grid: allow horizontal scroll on mobile */
+  .week-grid {
+    min-width: 480px !important;
+  }
+
+  /* Time column narrower on mobile */
+  .time-col {
+    min-width: 44px !important;
+    font-size: 10px !important;
+  }
+
+  /* Day columns use flex */
+  .day-col {
+    min-width: 60px !important;
+    font-size: 11px !important;
+  }
+
+  /* Day header text smaller */
+  .day-header-name {
+    font-size: 10px !important;
+  }
+
+  .day-header-num {
+    font-size: 16px !important;
+  }
+
+  /* Month view: reduce padding */
+  .month-grid .day-cell {
+    min-height: 60px !important;
+    padding: 4px !important;
+  }
+
+  .month-grid .day-cell .cell-events {
+    display: none !important; /* hide text events on very small screens */
+  }
+
+  /* Event blocks: smaller text */
+  .event-block {
+    font-size: 10px !important;
+    padding: 2px 4px !important;
+  }
+
+  /* Nav buttons */
+  .cal-nav {
+    gap: 6px !important;
+  }
+
+  .cal-nav button {
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+  }
+
+  /* View toggle buttons */
+  .view-toggle {
+    gap: 4px !important;
+  }
+
+  .view-toggle button {
+    padding: 5px 10px !important;
+    font-size: 11px !important;
+  }
+
+  /* FAB: push up above iOS home bar */
+  #stoke-voice-btn {
+    bottom: calc(24px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Extra small: day names abbreviated */
+  .day-header-name {
+    font-size: 9px !important;
+    letter-spacing: 0 !important;
+  }
+
+  /* Month cells even more compact */
+  .month-grid .day-cell {
+    min-height: 44px !important;
+  }
+
+  /* Hide time labels on tiny screens */
+  .time-label {
+    display: none !important;
+  }
+
+  .time-col {
+    min-width: 8px !important;
+  }
+}
+
 </style>
 </head>
 <body>
