@@ -896,10 +896,10 @@ NEXT STEPS:
 
 2. Set env vars via Wrangler:
    npx wrangler@3.99.0 pages secret put GOOGLE_CLIENT_ID --project-name=stoke
-   (paste: 917703641871-3fi6dci98skkrum59im2d1c1b64s9q9r.apps.googleusercontent.com)
+   (paste your Client ID from Google Cloud Console)
 
    npx wrangler@3.99.0 pages secret put GOOGLE_CLIENT_SECRET --project-name=stoke
-   (paste: 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)
+   (paste your Client Secret from Google Cloud Console)
 
 3. Set up Google Pub/Sub for push notifications:
    - Go to console.cloud.google.com/cloudpubsub/topics
