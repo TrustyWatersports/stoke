@@ -2639,14 +2639,15 @@ async function processEmailThroughPipeline(parsedEmail, businessId, conn, env){
   const customerCtx   = buildCustomerContext(historyContext);
   const systemPrompt  = buildCachedPrefix(profile, 'lead_parser') + customerCtx;
 
-  // Tool use extraction
+  // Tool use extraction - use FAST model only for email pipeline
+  // Extended thinking is reserved for interactive/manual use, not background processing
   let intake;
   try {
     intake = await callClaudeTool(
-      env, FAST_MODEL_V4,
+      env, FAST_MODEL_V4,  // Always fast model in background pipeline
       systemPrompt,
       'Extract intake from this email inquiry:\n\n' + parsedEmail.fullText,
-      INTAKE_TOOL, 1000
+      INTAKE_TOOL, 800
     );
   } catch(e) {
     // Fallback to basic extraction
@@ -2663,11 +2664,8 @@ async function processEmailThroughPipeline(parsedEmail, businessId, conn, env){
     };
   }
 
-  // Validation pass
-  try {
-    const validation = await validateIntake(env, profile, parsedEmail.fullText, intake);
-    if(!validation.is_valid) intake = applyCorrections(intake, validation);
-  } catch(e) { /* non-critical */ }
+  // Skip validation pass in background email pipeline - saves time
+  // Validation runs in interactive mode (handleMasterPipeline) but not here
 
   // Draft reply
   let draftReply = '';
@@ -2940,9 +2938,70 @@ async function handleGmailWebhook(request, env){
   return new Response('ok', { status: 200 });
 }
 
-// Manual sync + cron fallback - polls for unread messages
-async function handleGmailSync(request, env, businessId){
-  // Can be called manually or by cron
+// Get the last processed historyId for a business
+async function getLastHistoryId(env, businessId){
+  try {
+    const conn = await env.DB.prepare(
+      'SELECT last_history_id FROM platform_connections WHERE business_id=? AND platform=?'
+    ).bind(businessId, 'gmail').first();
+    return conn?.last_history_id || null;
+  } catch(e) { return null; }
+}
+
+// Save the latest historyId after processing
+async function saveLastHistoryId(env, businessId, historyId){
+  try {
+    await env.DB.prepare(
+      'UPDATE platform_connections SET last_history_id=?, updated_at=? WHERE business_id=? AND platform=?'
+    ).bind(String(historyId), now(), businessId, 'gmail').run();
+  } catch(e) { console.warn('[Gmail] Could not save historyId:', e.message); }
+}
+
+// Fetch only NEW messages since last historyId - the right way
+async function fetchNewMessages(accessToken, lastHistoryId){
+  if(!lastHistoryId){
+    // First sync ever - just get last 5 messages to seed the historyId
+    const resp = await fetch(
+      'https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=5&labelIds=INBOX',
+      { headers: { 'Authorization': 'Bearer ' + accessToken } }
+    );
+    const data = await resp.json();
+    return { messages: data.messages || [], isFirstSync: true };
+  }
+
+  // Use Gmail history API - only returns changes since lastHistoryId
+  const resp = await fetch(
+    'https://gmail.googleapis.com/gmail/v1/users/me/history?startHistoryId=' + lastHistoryId +
+    '&historyTypes=messageAdded&labelId=INBOX&maxResults=50',
+    { headers: { 'Authorization': 'Bearer ' + accessToken } }
+  );
+  const data = await resp.json();
+
+  if(data.error?.code === 404){
+    // historyId expired (older than ~30 days) - fall back to recent messages
+    console.warn('[Gmail] historyId expired, falling back to recent messages');
+    const fallback = await fetch(
+      'https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10&labelIds=INBOX&q=is:unread',
+      { headers: { 'Authorization': 'Bearer ' + accessToken } }
+    );
+    const fb = await fallback.json();
+    return { messages: fb.messages || [], historyExpired: true };
+  }
+
+  // Extract message IDs from history events
+  const newHistoryId = data.historyId;
+  const messages = (data.history || [])
+    .flatMap(h => h.messagesAdded || [])
+    .map(m => m.message)
+    .filter(Boolean)
+    // Deduplicate by id
+    .filter((m, i, arr) => arr.findIndex(x => x.id === m.id) === i);
+
+  return { messages, newHistoryId };
+}
+
+// Manual sync - only processes NEW emails since last sync
+async function handleGmailSync(request, env, businessId, ctx){
   let targetBusinessId = businessId;
 
   if(!targetBusinessId && request){
@@ -2964,25 +3023,70 @@ async function handleGmailSync(request, env, businessId){
     return json({ ok: false, error: 'Token refresh failed: ' + e.message });
   }
 
-  const msgs = await fetchUnreadMessages(accessToken).catch(() => ({ messages: [] }));
-  if(!msgs.messages?.length) return json({ ok: true, processed: 0, message: 'No new messages' });
+  // Get current mailbox profile to know the latest historyId
+  const profileResp = await fetch(
+    'https://gmail.googleapis.com/gmail/v1/users/me/profile',
+    { headers: { 'Authorization': 'Bearer ' + accessToken } }
+  ).catch(() => null);
+  const profile = profileResp ? await profileResp.json() : {};
+  const currentHistoryId = profile.historyId;
 
-  const results = [];
-  for(const m of msgs.messages.slice(0, 20)){
-    try {
-      const full   = await fetchGmailMessage(m.id, accessToken);
-      const parsed = parseGmailMessage(full);
-      const result = await processEmailThroughPipeline(parsed, targetBusinessId, conn, env);
-      results.push({ ...result, messageId: m.id });
-    } catch(e) {
-      results.push({ ok: false, messageId: m.id, error: e.message });
-    }
+  // Get last processed historyId
+  const lastHistoryId = await getLastHistoryId(env, targetBusinessId);
+
+  // Fetch only new messages
+  const { messages, newHistoryId, isFirstSync } = await fetchNewMessages(accessToken, lastHistoryId)
+    .catch(() => ({ messages: [], newHistoryId: currentHistoryId }));
+
+  // If no new messages, update historyId to current and return
+  if(!messages?.length){
+    if(currentHistoryId) await saveLastHistoryId(env, targetBusinessId, currentHistoryId);
+    return json({ ok: true, processed: 0, skipped: 0, total: 0, message: 'Inbox is up to date — no new emails since last sync.' });
   }
 
-  const processed = results.filter(r => r.ok && !r.skipped).length;
-  const skipped   = results.filter(r => r.skipped).length;
+  const total = messages.length;
+  const jobId = 'sync_' + token(8);
+  // Save historyId now so parallel syncs don't double-process
+  const nextHistoryId = newHistoryId || currentHistoryId;
+  if(nextHistoryId) await saveLastHistoryId(env, targetBusinessId, nextHistoryId);
 
-  return json({ ok: true, processed, skipped, total: msgs.messages.length, results });
+  // Process in background so we don't hit Worker CPU timeout
+  const processAsync = async () => {
+    let processed = 0, skipped = 0;
+    for(const m of messages.slice(0, 20)){
+      try {
+        const full   = await fetchGmailMessage(m.id, accessToken);
+        const parsed = parseGmailMessage(full);
+        const result = await processEmailThroughPipeline(parsed, targetBusinessId, conn, env);
+        if(result.skipped) skipped++;
+        else if(result.ok) processed++;
+      } catch(e) {
+        console.error('[Gmail Sync] Error on', m.id, e.message);
+      }
+    }
+    await logAutomation(env, targetBusinessId, 'gmail_sync_complete',
+      'Sync: ' + processed + ' new leads, ' + skipped + ' skipped',
+      { job_id: jobId, processed, skipped, total, is_first_sync: !!isFirstSync },
+      'gmail_sync', 1, 'completed'
+    ).catch(() => {});
+  };
+
+  if(ctx?.waitUntil){
+    ctx.waitUntil(processAsync());
+  } else {
+    await processAsync();
+  }
+
+  return json({
+    ok: true,
+    job_id: jobId,
+    total,
+    is_first_sync: !!isFirstSync,
+    message: isFirstSync
+      ? 'First sync — seeding history. Future syncs will only check new emails.'
+      : 'Found ' + total + ' new email' + (total !== 1 ? 's' : '') + ' — processing in background.',
+    status: 'processing'
+  });
 }
 
 // Get Gmail connection status
@@ -3085,7 +3189,7 @@ export async function scheduled(event,env,ctx){
 
     for(const conn of (connections.results || [])){
       try {
-        await handleGmailSync(null, env, conn.business_id);
+        await handleGmailSync(null, env, conn.business_id, null);
       } catch(e) {
         console.error('[Cron Gmail]', conn.business_id, e.message);
       }
@@ -3152,7 +3256,7 @@ export default {
       if(path==='/api/gmail/connect'&&method==='GET')return handleGmailConnect(request,env);
       if(path==='/api/gmail/callback'&&method==='GET')return handleGmailCallback(request,env);
       if(path==='/api/gmail/webhook'&&method==='POST')return handleGmailWebhook(request,env);
-      if(path==='/api/gmail/sync'&&method==='POST')return handleGmailSync(request,env,null);
+      if(path==='/api/gmail/sync'&&method==='POST')return handleGmailSync(request,env,null,ctx);
       if(path==='/api/gmail/status'&&method==='GET')return handleGmailStatus(request,env);
       if(path==='/api/gmail/disconnect'&&method==='POST')return handleGmailDisconnect(request,env);
       if(path==='/api/gmail/reply'&&method==='POST')return handleGmailReply(request,env);
